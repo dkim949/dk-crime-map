@@ -2,7 +2,7 @@ export interface Incident {
   id: string;
   source: string;
   title_de: string;
-  title_en?: string;
+  title_en?: string | null;
   district: string | null;
   address_raw: string | null;
   lat: number | null;
@@ -23,15 +23,49 @@ export interface DistrictStat {
   count: number;
 }
 
-export const CATEGORIES: Record<string, { label: string; color: string }> = {
-  theft: { label: "Theft", color: "#ef4444" },
-  assault: { label: "Assault", color: "#f97316" },
-  shooting: { label: "Shooting", color: "#dc2626" },
-  fraud: { label: "Fraud", color: "#eab308" },
-  drugs: { label: "Drugs", color: "#a855f7" },
-  traffic: { label: "Traffic", color: "#3b82f6" },
-  fire: { label: "Fire", color: "#f59e0b" },
-  missing: { label: "Missing", color: "#6366f1" },
-  homicide: { label: "Homicide", color: "#be123c" },
-  other: { label: "Other", color: "#71717a" },
+export interface CategoryGroup {
+  label: { de: string; en: string };
+  color: string;
+  shape: "triangle" | "diamond" | "circle" | "square";
+  sources: string[];
+}
+
+/** Colorblind-safe palette: blue, amber, purple, gray + geometric shapes */
+export const CATEGORY_GROUPS: Record<string, CategoryGroup> = {
+  violent: {
+    label: { de: "Gewalt", en: "Violent" },
+    color: "#60a5fa",
+    shape: "triangle",
+    sources: ["assault", "shooting", "homicide"],
+  },
+  property: {
+    label: { de: "Eigentum", en: "Property" },
+    color: "#fbbf24",
+    shape: "diamond",
+    sources: ["theft", "fraud"],
+  },
+  traffic: {
+    label: { de: "Verkehr", en: "Traffic" },
+    color: "#a78bfa",
+    shape: "circle",
+    sources: ["traffic"],
+  },
+  other: {
+    label: { de: "Sonstiges", en: "Other" },
+    color: "#94a3b8",
+    shape: "square",
+    sources: ["drugs", "fire", "missing", "other"],
+  },
 };
+
+export function getCategoryGroup(category: string): string {
+  for (const [group, config] of Object.entries(CATEGORY_GROUPS)) {
+    if (config.sources.includes(category)) return group;
+  }
+  return "other";
+}
+
+export function getCategoryColor(category: string): string {
+  const group = getCategoryGroup(category);
+  return CATEGORY_GROUPS[group]?.color || "#94a3b8";
+}
