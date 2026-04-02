@@ -42,7 +42,7 @@ services:
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     schedule: "0 */6 * * *"   # 6시간마다: 00:00, 06:00, 12:00, 18:00 UTC
-    command: python pipeline.py --year 2026 --max 200
+    command: python pipeline.py --max 200
     envVars:
       - key: SUPABASE_URL
         sync: false

@@ -5,7 +5,7 @@ pipeline.py
 Cloud Scheduler / Render cron이 이 파일을 실행.
 
 실행:
-  python pipeline.py --year 2026 --max 100
+  python pipeline.py --year 2025 --max 100
 
 환경변수:
   SUPABASE_URL, SUPABASE_KEY, MAPS_API_KEY, ANTHROPIC_API_KEY
@@ -14,6 +14,7 @@ Cloud Scheduler / Render cron이 이 파일을 실행.
 import argparse
 import logging
 import os
+from datetime import datetime
 
 import anthropic
 
@@ -52,7 +53,9 @@ Title: {title_de}"""
 
 # ── 메인 파이프라인 ──────────────────────────────────────────────────────────
 
-def run(year: int = 2026, max_articles: int = 100) -> None:
+def run(year: int | None = None, max_articles: int = 100) -> None:
+    if year is None:
+        year = datetime.now().year
     maps_key      = os.environ["MAPS_API_KEY"]
     anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
 
@@ -89,8 +92,11 @@ def run(year: int = 2026, max_articles: int = 100) -> None:
 
 
 if __name__ == "__main__":
+    from dotenv import load_dotenv
+    load_dotenv()
+
     parser = argparse.ArgumentParser()
-    parser.add_argument("--year",    type=int, default=2026)
+    parser.add_argument("--year",    type=int, default=datetime.now().year)
     parser.add_argument("--max",     type=int, default=100)
     args = parser.parse_args()
     run(year=args.year, max_articles=args.max)
