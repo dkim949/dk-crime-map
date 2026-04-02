@@ -49,18 +49,17 @@ def main():
     db = get_client()
     ai = get_ai_client()
 
-    # title_en이 NULL인 레코드 조회
+    # title_en이 NULL이거나 title_de와 동일한(미번역) 레코드 조회
     result = (
         db.table("incidents")
-        .select("id, title_de")
-        .is_("title_en", "null")
+        .select("id, title_de, title_en")
         .eq("is_active", True)
         .limit(500)
         .execute()
     )
 
-    rows = result.data or []
-    log.info(f"Found {len(rows)} records without title_en")
+    rows = [r for r in (result.data or []) if not r.get("title_en") or r.get("title_en") == r.get("title_de")]
+    log.info(f"Found {len(rows)} records needing translation")
 
     translated = 0
     for row in rows:
