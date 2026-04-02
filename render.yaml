@@ -1,0 +1,52 @@
+# render.yaml
+# ============================================================
+# Render.com Blueprint — Berlin Crime Map 백엔드
+#
+# 사용법:
+#   1. GitHub repo에 이 파일 push
+#   2. Render Dashboard → New → Blueprint
+#   3. repo 연결 → 자동 감지
+# ============================================================
+
+services:
+  # ── FastAPI 웹 서버 ────────────────────────────────────────
+  - type: web
+    name: berlin-crime-api
+    runtime: python
+    plan: free
+    region: frankfurt          # 베를린과 가까운 리전
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: SUPABASE_URL
+        sync: false            # Dashboard에서 직접 입력
+      - key: SUPABASE_KEY
+        sync: false
+      - key: MAPS_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: "https://berlin-crime-map.vercel.app,http://localhost:3000"
+
+  # ── 스크래퍼 크론 잡 ───────────────────────────────────────
+  - type: cron
+    name: berlin-crime-scraper
+    runtime: python
+    plan: free
+    region: frankfurt
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    schedule: "0 */6 * * *"   # 6시간마다: 00:00, 06:00, 12:00, 18:00 UTC
+    command: python pipeline.py --year 2026 --max 200
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: MAPS_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
