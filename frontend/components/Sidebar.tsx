@@ -72,6 +72,7 @@ export default function Sidebar({
   loading,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(true);
   const geoCount = incidents.filter((i) => i.lat != null).length;
 
   return (
@@ -80,7 +81,7 @@ export default function Sidebar({
         flex flex-col bg-bg-raised border-r border-border
         transition-[width] duration-200
         ${collapsed ? "w-12" : "w-[380px]"}
-        max-md:w-full max-md:h-[45dvh] max-md:border-r-0 max-md:border-t
+        max-md:w-full max-md:h-[55dvh] max-md:border-r-0 max-md:border-t
       `}
     >
       {/* Header */}
@@ -130,7 +131,17 @@ export default function Sidebar({
       {!collapsed && (
         <>
           {/* Filters */}
-          <div className="px-4 py-3 border-b border-border space-y-3">
+          <div className="border-b border-border">
+            <button
+              onClick={() => setFiltersOpen(!filtersOpen)}
+              className="w-full px-4 py-2 flex items-center justify-between md:hidden"
+            >
+              <span className="text-[10px] font-mono text-fg-dim uppercase tracking-widest">
+                Filter
+              </span>
+              <span className="text-fg-dim text-xs">{filtersOpen ? "▲" : "▼"}</span>
+            </button>
+            <div className={`px-4 pb-3 space-y-2 ${filtersOpen ? "" : "max-md:hidden"} md:pt-3`}>
             {/* Period */}
             <div>
               <span className="text-[10px] font-mono text-fg-dim uppercase tracking-widest">
@@ -248,6 +259,7 @@ export default function Sidebar({
                 ))}
               </select>
             </label>
+            </div>
           </div>
 
           {/* Incident List */}
