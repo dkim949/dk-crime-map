@@ -11,7 +11,7 @@
 services:
   # ── FastAPI 웹 서버 ────────────────────────────────────────
   - type: web
-    name: berlin-crime-api
+    name: dk-crime-api
     runtime: python
     python: "3.11"
     plan: free
@@ -34,7 +34,7 @@ services:
 
   # ── 스크래퍼 크론 잡 ───────────────────────────────────────
   - type: cron
-    name: berlin-crime-scraper
+    name: dk-crime-scraper
     runtime: python
     python: "3.11"
     plan: free
