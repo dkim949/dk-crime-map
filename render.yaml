@@ -13,6 +13,7 @@ services:
   - type: web
     name: berlin-crime-api
     runtime: python
+    python: "3.11"
     plan: free
     region: frankfurt          # 베를린과 가까운 리전
     rootDir: backend
@@ -35,6 +36,7 @@ services:
   - type: cron
     name: berlin-crime-scraper
     runtime: python
+    python: "3.11"
     plan: free
     region: frankfurt
     rootDir: backend
