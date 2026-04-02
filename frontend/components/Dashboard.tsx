@@ -5,15 +5,17 @@ import dynamic from "next/dynamic";
 import Sidebar from "./Sidebar";
 import { fetchIncidents } from "@/lib/api";
 import type { Incident } from "@/types/incident";
+import { CATEGORY_GROUPS } from "@/types/incident";
 
 const CrimeMap = dynamic(() => import("./CrimeMap"), { ssr: false });
 
 export default function Dashboard() {
   const [allIncidents, setAllIncidents] = useState<Incident[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [category, setCategory] = useState("");
+  const [activeGroups, setActiveGroups] = useState<string[]>([]);
   const [district, setDistrict] = useState("");
-  const [datePreset, setDatePreset] = useState(0); // 0 = all, 1/7/30 = days
+  const [datePreset, setDatePreset] = useState(0);
+  const [lang, setLang] = useState<"de" | "en">("de");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,7 +24,6 @@ export default function Dashboard() {
     setError(null);
     try {
       const result = await fetchIncidents({
-        category: category || undefined,
         district: district || undefined,
         limit: 500,
       });
@@ -32,28 +33,46 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, [category, district]);
+  }, [district]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  // Client-side date filtering by preset
+  // Client-side filtering: date + category groups
   const incidents = useMemo(() => {
-    if (datePreset === 0) return allIncidents;
+    let filtered = allIncidents;
 
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - datePreset);
-    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    if (datePreset > 0) {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - datePreset);
+      const cutoffStr = cutoff.toISOString().slice(0, 10);
+      filtered = filtered.filter((inc) => {
+        if (!inc.occurred_at) return false;
+        return inc.occurred_at.slice(0, 10) >= cutoffStr;
+      });
+    }
 
-    return allIncidents.filter((inc) => {
-      if (!inc.occurred_at) return false;
-      return inc.occurred_at.slice(0, 10) >= cutoffStr;
-    });
-  }, [allIncidents, datePreset]);
+    if (activeGroups.length > 0) {
+      const allowedCategories = activeGroups.flatMap(
+        (g) => CATEGORY_GROUPS[g]?.sources || [],
+      );
+      filtered = filtered.filter((inc) =>
+        allowedCategories.includes(inc.category),
+      );
+    }
+
+    return filtered;
+  }, [allIncidents, datePreset, activeGroups]);
 
   const handleSelect = useCallback((id: string) => {
     setSelectedId(id);
+  }, []);
+
+  const toggleGroup = useCallback((group: string) => {
+    setActiveGroups((prev) =>
+      prev.includes(group) ? prev.filter((g) => g !== group) : [...prev, group],
+    );
   }, []);
 
   if (error) {
@@ -61,12 +80,11 @@ export default function Dashboard() {
       <div className="min-h-[100dvh] flex items-center justify-center bg-bg">
         <div className="text-center space-y-3">
           <p className="text-accent font-mono text-sm uppercase tracking-widest">
-            Connection Error
+            {error}
           </p>
-          <p className="text-fg-dim text-xs font-mono max-w-xs">{error}</p>
           <button
             onClick={load}
-            className="px-4 py-2 bg-bg-surface border border-border text-fg text-xs font-mono hover:bg-bg-raised transition-colors duration-100"
+            className="px-4 py-2 bg-bg-surface border border-border text-fg text-xs font-mono hover:border-accent transition-colors duration-150"
           >
             Retry
           </button>
@@ -81,12 +99,15 @@ export default function Dashboard() {
         incidents={incidents}
         selectedId={selectedId}
         onSelect={handleSelect}
-        category={category}
+        activeGroups={activeGroups}
+        onToggleGroup={toggleGroup}
+        onClearGroups={() => setActiveGroups([])}
         district={district}
         datePreset={datePreset}
-        onCategoryChange={setCategory}
+        lang={lang}
         onDistrictChange={setDistrict}
         onDatePresetChange={setDatePreset}
+        onLangChange={setLang}
         loading={loading}
       />
       <main className="flex-1 relative">
@@ -94,6 +115,7 @@ export default function Dashboard() {
           incidents={incidents}
           selectedId={selectedId}
           onSelect={handleSelect}
+          lang={lang}
         />
       </main>
     </div>
