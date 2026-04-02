@@ -94,7 +94,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex min-h-[100dvh] max-md:flex-col-reverse">
+    <div className="flex h-[100dvh] max-md:flex-col-reverse">
       <Sidebar
         incidents={incidents}
         selectedId={selectedId}

@@ -24,21 +24,42 @@ Title: {title}"""
 
 
 def get_ai_client():
-    key = os.environ.get("OPENCODE_API_KEY")
-    if key:
-        from openai import OpenAI
-        return OpenAI(api_key=key, base_url="https://api.open-coder.com/v1")
-    raise RuntimeError("OPENCODE_API_KEY not set")
+    """Ollama (로컬) → OpenAI → Anthropic 순서로 사용 가능한 클라이언트 반환."""
+    from openai import OpenAI
+
+    # 1. Ollama 로컬
+    try:
+        import requests
+        r = requests.get("http://localhost:11434/v1/models", timeout=2)
+        if r.ok:
+            log.info("Using Ollama (local)")
+            return OpenAI(base_url="http://localhost:11434/v1", api_key="ollama"), "gemma3:4b"
+    except Exception:
+        pass
+
+    # 2. OpenAI
+    openai_key = os.environ.get("OPENAI_API_KEY")
+    if openai_key:
+        log.info("Using OpenAI")
+        return OpenAI(api_key=openai_key), "gpt-4o-mini"
+
+    raise RuntimeError("No AI provider available. Start Ollama or set OPENAI_API_KEY.")
 
 
-def translate(client, title_de: str) -> str | None:
+def translate(client, model: str, title_de: str) -> str | None:
     try:
         resp = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=model,
             max_tokens=200,
             messages=[{"role": "user", "content": TRANSLATE_PROMPT.format(title=title_de)}],
         )
-        text = resp.choices[0].message.content or ""
+        text = (resp.choices[0].message.content or "").strip()
+        # Ollama may wrap in ```json ... ```
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+            text = text.strip()
         return json.loads(text).get("en")
     except Exception as e:
         log.warning(f"Translation failed: {title_de[:50]} ({e})")
@@ -47,7 +68,7 @@ def translate(client, title_de: str) -> str | None:
 
 def main():
     db = get_client()
-    ai = get_ai_client()
+    ai, model = get_ai_client()
 
     # title_en이 NULL이거나 title_de와 동일한(미번역) 레코드 조회
     result = (
@@ -66,7 +87,7 @@ def main():
         if not row.get("title_de"):
             continue
 
-        title_en = translate(ai, row["title_de"])
+        title_en = translate(ai, model, row["title_de"])
         if title_en:
             db.table("incidents").update({"title_en": title_en}).eq("id", row["id"]).execute()
             translated += 1
