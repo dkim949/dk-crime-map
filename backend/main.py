@@ -81,7 +81,6 @@ def get_incidents(
     district: Optional[str] = None,
     limit: int = 200,
     offset: int = 0,
-    lang: str = "de",          # de | ko | en | ja
 ):
     """
     지도용 사건 목록. public_incidents 뷰 사용 (검증된 데이터만).
@@ -93,13 +92,10 @@ def get_incidents(
       offset    : 페이지네이션
       lang      : 제목 언어 선택
     """
-    lang = lang if lang in ("de", "ko", "en", "ja") else "de"
-    title_col = f"title_{lang}"
-
     db = get_client()
     query = (
         db.table("public_incidents")
-        .select(f"id, source, {title_col}, district, address_raw, lat, lng, category, occurred_at, scraped_at")
+        .select("id, source, title_de, title_en, district, address_raw, lat, lng, category, occurred_at, scraped_at")
         .order("occurred_at", desc=True)
         .limit(min(limit, 500))
         .offset(offset)

@@ -5,18 +5,19 @@ pipeline.py
 Cloud Scheduler / Render cron이 이 파일을 실행.
 
 실행:
-  python pipeline.py --year 2025 --max 100
+  python pipeline.py --year 2026 --max 100
 
 환경변수:
-  SUPABASE_URL, SUPABASE_KEY, MAPS_API_KEY, ANTHROPIC_API_KEY
+  SUPABASE_URL, SUPABASE_KEY, MAPS_API_KEY
+  AI_PROVIDER (opencode | openai | anthropic), 기본: 사용 가능한 키 자동 선택
+  OPENCODE_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY
 """
 
 import argparse
+import json
 import logging
 import os
 from datetime import datetime
-
-import anthropic
 
 from scraper import scrape_batch, Incident
 from geocoder import geocode
@@ -25,28 +26,68 @@ from storage import get_client, upsert_incidents
 log = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-
-# ── 번역 (Claude API) ────────────────────────────────────────────────────────
-
-def translate_title(title_de: str, client: anthropic.Anthropic) -> dict[str, str]:
-    """
-    독일어 제목 → 영어 번역.
-    """
-    prompt = f"""Translate this German police report title into English.
+TRANSLATE_PROMPT = """Translate this German police report title into English.
 Return ONLY valid JSON with key: en. No explanation.
 
-Title: {title_de}"""
+Title: {title}"""
+
+
+# ── 번역 ──────────────────────────────────────────────────────────────────────
+
+def _get_ai_provider() -> tuple[str, object] | None:
+    """사용 가능한 AI provider를 반환. (provider_name, client)"""
+    provider = os.environ.get("AI_PROVIDER", "").lower()
+
+    # opencode (OpenAI-compatible)
+    opencode_key = os.environ.get("OPENCODE_API_KEY")
+    if opencode_key and provider in ("", "opencode"):
+        from openai import OpenAI
+        client = OpenAI(
+            api_key=opencode_key,
+            base_url="https://api.open-coder.com/v1",
+        )
+        return ("opencode", client)
+
+    # openai
+    openai_key = os.environ.get("OPENAI_API_KEY")
+    if openai_key and provider in ("", "openai"):
+        from openai import OpenAI
+        client = OpenAI(api_key=openai_key)
+        return ("openai", client)
+
+    # anthropic
+    anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
+    if anthropic_key and provider in ("", "anthropic"):
+        import anthropic
+        client = anthropic.Anthropic(api_key=anthropic_key)
+        return ("anthropic", client)
+
+    return None
+
+
+def translate_title(title_de: str, provider: str, client: object) -> dict[str, str]:
+    """독일어 제목 → 영어 번역. provider에 따라 API 호출."""
+    prompt = TRANSLATE_PROMPT.format(title=title_de)
 
     try:
-        msg = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=200,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        import json
-        return json.loads(msg.content[0].text)
+        if provider in ("opencode", "openai"):
+            from openai import OpenAI
+            resp = client.chat.completions.create(  # type: ignore
+                model="gpt-4o-mini" if provider == "openai" else "gpt-4o-mini",
+                max_tokens=200,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            text = resp.choices[0].message.content or ""
+            return json.loads(text)
+        else:  # anthropic
+            msg = client.messages.create(  # type: ignore
+                model="claude-haiku-4-5-20251001",
+                max_tokens=200,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            return json.loads(msg.content[0].text)
     except Exception as e:
-        log.warning(f"Translation failed for: {title_de} ({e})")
+        log.warning(f"Translation failed ({provider}): {title_de} ({e})")
         return {"en": title_de}
 
 
@@ -55,11 +96,14 @@ Title: {title_de}"""
 def run(year: int | None = None, max_articles: int = 100) -> None:
     if year is None:
         year = datetime.now().year
-    maps_key      = os.environ["MAPS_API_KEY"]
-    anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
-
-    ai_client = anthropic.Anthropic(api_key=anthropic_key) if anthropic_key else None
+    maps_key = os.environ["MAPS_API_KEY"]
     db_client = get_client()
+
+    ai = _get_ai_provider()
+    if ai:
+        log.info(f"AI provider: {ai[0]}")
+    else:
+        log.info("No AI provider configured. Translation will be skipped.")
 
     # 1. 스크래핑
     log.info("=== Step 1: Scraping ===")
@@ -73,12 +117,13 @@ def run(year: int | None = None, max_articles: int = 100) -> None:
             if coords:
                 inc.lat, inc.lng = coords
 
-    # 3. 번역 (AI 클라이언트 있을 때만)
-    if ai_client:
-        log.info("=== Step 3: Translation ===")
+    # 3. 번역
+    if ai:
+        provider_name, client = ai
+        log.info(f"=== Step 3: Translation ({provider_name}) ===")
         for inc in incidents:
             if inc.title_de:
-                translations = translate_title(inc.title_de, ai_client)
+                translations = translate_title(inc.title_de, provider_name, client)
                 inc.title_en = translations.get("en")
 
     # 4. Supabase 저장
@@ -93,7 +138,7 @@ if __name__ == "__main__":
     load_dotenv()
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--year",    type=int, default=datetime.now().year)
-    parser.add_argument("--max",     type=int, default=100)
+    parser.add_argument("--year", type=int, default=datetime.now().year)
+    parser.add_argument("--max", type=int, default=100)
     args = parser.parse_args()
     run(year=args.year, max_articles=args.max)
