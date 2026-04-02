@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #09090b;
+  --bg-raised: #18181b;
+  --bg-surface: #27272a;
+  --fg: #fafafa;
+  --fg-muted: #a1a1aa;
+  --fg-dim: #52525b;
+  --accent: #dc2626;
+  --accent-muted: #991b1b;
+  --border: #3f3f46;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-raised: var(--bg-raised);
+  --color-bg-surface: var(--bg-surface);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-dim: var(--fg-dim);
+  --color-accent: var(--accent);
+  --color-accent-muted: var(--accent-muted);
+  --color-border: var(--border);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Leaflet overrides for dark theme */
+.leaflet-container {
+  background: var(--bg) !important;
+}
+
+.leaflet-tile-pane {
+  filter: saturate(0.5);
+}
+
+.leaflet-control-zoom a {
+  background: var(--bg-raised) !important;
+  color: var(--fg) !important;
+  border-color: var(--border) !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: var(--bg-raised) !important;
+  color: var(--fg) !important;
+  border-radius: 0 !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5) !important;
+}
+
+.leaflet-popup-tip {
+  background: var(--bg-raised) !important;
+}
+
+.leaflet-popup-close-button {
+  color: var(--fg-muted) !important;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--bg-surface);
+}
+
+/* Monospace numbers */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono), monospace;
+}
