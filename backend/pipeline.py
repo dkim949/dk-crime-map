@@ -30,25 +30,24 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 
 def translate_title(title_de: str, client: anthropic.Anthropic) -> dict[str, str]:
     """
-    독일어 제목 → ko / en / ja 번역.
-    단순 3개 언어 동시 번역 (JSON 응답).
+    독일어 제목 → 영어 번역.
     """
-    prompt = f"""Translate this German police report title into Korean, English, and Japanese.
-Return ONLY valid JSON with keys: ko, en, ja. No explanation.
+    prompt = f"""Translate this German police report title into English.
+Return ONLY valid JSON with key: en. No explanation.
 
 Title: {title_de}"""
 
-    msg = client.messages.create(
-        model="claude-haiku-4-5-20251001",   # 번역은 Haiku로 비용 절감
-        max_tokens=300,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    import json
     try:
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=200,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        import json
         return json.loads(msg.content[0].text)
-    except Exception:
-        log.warning(f"Translation parse failed for: {title_de}")
-        return {"ko": title_de, "en": title_de, "ja": title_de}
+    except Exception as e:
+        log.warning(f"Translation failed for: {title_de} ({e})")
+        return {"en": title_de}
 
 
 # ── 메인 파이프라인 ──────────────────────────────────────────────────────────
@@ -80,9 +79,7 @@ def run(year: int | None = None, max_articles: int = 100) -> None:
         for inc in incidents:
             if inc.title_de:
                 translations = translate_title(inc.title_de, ai_client)
-                inc.title_ko = translations.get("ko")
                 inc.title_en = translations.get("en")
-                inc.title_ja = translations.get("ja")
 
     # 4. Supabase 저장
     log.info("=== Step 4: Storage ===")
