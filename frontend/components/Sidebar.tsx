@@ -19,14 +19,23 @@ const DISTRICTS = [
   "Reinickendorf",
 ];
 
+const DATE_PRESETS = [
+  { label: "24h", days: 1 },
+  { label: "7d", days: 7 },
+  { label: "30d", days: 30 },
+  { label: "All", days: 0 },
+] as const;
+
 interface SidebarProps {
   incidents: Incident[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   category: string;
   district: string;
+  datePreset: number;
   onCategoryChange: (v: string) => void;
   onDistrictChange: (v: string) => void;
+  onDatePresetChange: (days: number) => void;
   loading: boolean;
 }
 
@@ -36,8 +45,10 @@ export default function Sidebar({
   onSelect,
   category,
   district,
+  datePreset,
   onCategoryChange,
   onDistrictChange,
+  onDatePresetChange,
   loading,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
@@ -75,24 +86,57 @@ export default function Sidebar({
       {!collapsed && (
         <>
           {/* Filters */}
-          <div className="px-4 py-3 border-b border-border space-y-2">
-            <label className="block">
+          <div className="px-4 py-3 border-b border-border space-y-3">
+            <div>
+              <span className="text-[10px] font-mono text-fg-dim uppercase tracking-widest">
+                Period
+              </span>
+              <div className="mt-1 flex">
+                {DATE_PRESETS.map(({ label, days }) => (
+                  <button
+                    key={label}
+                    onClick={() => onDatePresetChange(days)}
+                    className={`
+                      flex-1 py-1.5 text-xs font-mono border border-border
+                      transition-colors duration-100
+                      ${datePreset === days
+                        ? "bg-accent text-fg border-accent"
+                        : "bg-bg-surface text-fg-muted hover:text-fg"
+                      }
+                    `}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
               <span className="text-[10px] font-mono text-fg-dim uppercase tracking-widest">
                 Category
               </span>
-              <select
-                value={category}
-                onChange={(e) => onCategoryChange(e.target.value)}
-                className="mt-1 w-full bg-bg-surface border border-border text-fg text-xs font-mono px-2 py-1.5 focus:outline-none focus:border-accent"
-              >
-                <option value="">All</option>
-                {Object.entries(CATEGORIES).map(([key, { label }]) => (
-                  <option key={key} value={key}>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {Object.entries(CATEGORIES).map(([key, { label, color }]) => (
+                  <button
+                    key={key}
+                    onClick={() =>
+                      onCategoryChange(category === key ? "" : key)
+                    }
+                    className={`
+                      px-2 py-1 text-[10px] font-mono border
+                      transition-colors duration-100
+                      ${category === key
+                        ? "text-fg border-current"
+                        : "text-fg-dim border-border hover:text-fg"
+                      }
+                    `}
+                    style={category === key ? { borderColor: color, color } : {}}
+                  >
                     {label}
-                  </option>
+                  </button>
                 ))}
-              </select>
-            </label>
+              </div>
+            </div>
 
             <label className="block">
               <span className="text-[10px] font-mono text-fg-dim uppercase tracking-widest">

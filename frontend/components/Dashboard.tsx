@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import dynamic from "next/dynamic";
 import Sidebar from "./Sidebar";
 import { fetchIncidents } from "@/lib/api";
@@ -9,10 +9,11 @@ import type { Incident } from "@/types/incident";
 const CrimeMap = dynamic(() => import("./CrimeMap"), { ssr: false });
 
 export default function Dashboard() {
-  const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [allIncidents, setAllIncidents] = useState<Incident[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [category, setCategory] = useState("");
   const [district, setDistrict] = useState("");
+  const [datePreset, setDatePreset] = useState(0); // 0 = all, 1/7/30 = days
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,7 +26,7 @@ export default function Dashboard() {
         district: district || undefined,
         limit: 500,
       });
-      setIncidents(result.data);
+      setAllIncidents(result.data);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load data");
     } finally {
@@ -36,6 +37,20 @@ export default function Dashboard() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Client-side date filtering by preset
+  const incidents = useMemo(() => {
+    if (datePreset === 0) return allIncidents;
+
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - datePreset);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+
+    return allIncidents.filter((inc) => {
+      if (!inc.occurred_at) return false;
+      return inc.occurred_at.slice(0, 10) >= cutoffStr;
+    });
+  }, [allIncidents, datePreset]);
 
   const handleSelect = useCallback((id: string) => {
     setSelectedId(id);
@@ -68,8 +83,10 @@ export default function Dashboard() {
         onSelect={handleSelect}
         category={category}
         district={district}
+        datePreset={datePreset}
         onCategoryChange={setCategory}
         onDistrictChange={setDistrict}
+        onDatePresetChange={setDatePreset}
         loading={loading}
       />
       <main className="flex-1 relative">

@@ -100,7 +100,7 @@ def get_incidents(
     query = (
         db.table("public_incidents")
         .select(f"id, source, {title_col}, district, address_raw, lat, lng, category, occurred_at, scraped_at")
-        .order("scraped_at", desc=True)
+        .order("occurred_at", desc=True)
         .limit(min(limit, 500))
         .offset(offset)
     )
