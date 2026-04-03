@@ -135,7 +135,7 @@ def run(year: int | None = None, max_articles: int = 100) -> None:
 
 if __name__ == "__main__":
     from dotenv import load_dotenv
-    load_dotenv()
+    load_dotenv(override=True)
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--year", type=int, default=datetime.now().year)

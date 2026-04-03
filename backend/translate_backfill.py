@@ -10,7 +10,7 @@ import logging
 import os
 
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(override=True)
 
 from storage import get_client
 
