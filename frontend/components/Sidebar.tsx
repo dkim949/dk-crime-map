@@ -33,10 +33,9 @@ function getTitle(inc: Incident, lang: Lang): string {
 }
 
 /** Map group key to i18n key */
-const GROUP_I18N: Record<string, "violent" | "property" | "traffic" | "other"> = {
+const GROUP_I18N: Record<string, "violent" | "property" | "other"> = {
   violent: "violent",
   property: "property",
-  traffic: "traffic",
   other: "other",
 };
 

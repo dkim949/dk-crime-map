@@ -12,7 +12,6 @@ const translations = {
     retry: "Erneut versuchen",
     violent: "Gewalt",
     property: "Eigentum",
-    traffic: "Verkehr",
     other: "Sonstiges",
   },
   en: {
@@ -28,7 +27,6 @@ const translations = {
     retry: "Retry",
     violent: "Violent",
     property: "Property",
-    traffic: "Traffic",
     other: "Other",
   },
 } as const;

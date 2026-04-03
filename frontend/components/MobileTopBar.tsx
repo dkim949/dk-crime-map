@@ -10,10 +10,9 @@ const DATE_PRESETS = [
   { label: "30d", days: 30 },
 ] as const;
 
-const GROUP_I18N: Record<string, "violent" | "property" | "traffic" | "other"> = {
+const GROUP_I18N: Record<string, "violent" | "property" | "other"> = {
   violent: "violent",
   property: "property",
-  traffic: "traffic",
   other: "other",
 };
 
