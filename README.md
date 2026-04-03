@@ -1,132 +1,194 @@
-# Render.com 배포 가이드
+# Berlin Crime Map
 
-## 전제조건
+Real-time crime & safety incident map for Berlin, powered by open data.
 
-- GitHub 계정 (Render와 연결용)
-- Supabase 설정 완료 (URL + service_role key 보유)
+**Live:** https://dk-crime-map-dongin.vercel.app
 
 ---
 
-## 1. GitHub 레포 구조
+## Architecture
 
 ```
-berlin-crime-map/
-├── render.yaml              ← Render Blueprint 설정
+┌─────────────┐    ┌──────────────┐    ┌──────────────────┐
+│  GitHub      │    │  Vercel      │    │  Render          │
+│  Actions     │    │  (Frontend)  │    │  (Backend API)   │
+│  Cron 12h    │    │  Next.js 16  │───▶│  FastAPI          │
+│  ┌─────────┐ │    │  React 19    │    │  Python 3.11     │
+│  │pipeline │─┼───▶│  Leaflet     │    └────────┬─────────┘
+│  │  .py    │ │    │  Tailwind    │             │
+│  └─────────┘ │    └──────────────┘             │
+└──────────────┘                                 │
+       │                                         │
+       ▼                                         ▼
+┌──────────────────────────────────────────────────┐
+│                 Supabase (PostgreSQL)             │
+│  ┌────────────┐  ┌──────────────┐  ┌───────────┐ │
+│  │ incidents  │  │ bike_thefts  │  │ app_config│ │
+│  │ (222 rows) │  │ (168+ rows)  │  │           │ │
+│  └────────────┘  └──────────────┘  └───────────┘ │
+└──────────────────────────────────────────────────┘
+```
+
+## Data Flow
+
+```
+Every 12 hours (GitHub Actions cron):
+
+1. RSS Feed (berlin.de/polizei)
+   └─▶ Scrape new article URLs only (skip existing)
+       └─▶ Parse: title, body, district, address, category
+           └─▶ Geocode addresses (Google Maps API)
+               └─▶ Translate DE→EN (Anthropic Claude Haiku)
+                   └─▶ Upsert to Supabase (incidents table)
+
+2. Bike Theft CSV (polizei-berlin.eu)
+   └─▶ Download daily rolling CSV
+       └─▶ Parse last 7 days, map LOR→district
+           └─▶ Upsert to Supabase (bike_thefts table)
+```
+
+## Data Sources
+
+| Source | Type | Frequency | Records |
+|--------|------|-----------|---------|
+| [Berlin Polizei Pressemeldungen](https://www.berlin.de/polizei/polizeimeldungen/) | RSS + HTML scraping | 12h cron | ~220 incidents |
+| [Fahrraddiebstahl Berlin](https://www.polizei-berlin.eu/Fahrraddiebstahl/Fahrraddiebstahl.csv) | CSV download | 12h cron | ~170/week |
+
+## Project Structure
+
+```
+dk-crime-map/
+├── .github/workflows/
+│   └── scraper.yml          # GitHub Actions cron (every 12h)
 ├── backend/
-│   ├── main.py              ← FastAPI 앱
-│   ├── scraper.py
-│   ├── geocoder.py
-│   ├── pipeline.py
-│   ├── storage.py
-│   └── requirements.txt
-└── frontend/                ← (다음 단계: Next.js)
+│   ├── main.py              # FastAPI server
+│   ├── scraper.py           # Polizei article scraper (RSS + archive)
+│   ├── bike_theft.py        # Bicycle theft CSV parser
+│   ├── geocoder.py          # Google Maps geocoding
+│   ├── pipeline.py          # Batch pipeline entry point
+│   ├── storage.py           # Supabase client & upsert
+│   ├── translate_backfill.py # One-time translation backfill
+│   ├── requirements.txt
+│   └── .env                 # Local env vars (not committed)
+├── frontend/
+│   ├── app/
+│   │   ├── layout.tsx       # Root layout (Geist fonts, Leaflet CSS)
+│   │   ├── page.tsx         # Entry point → Dashboard
+│   │   └── globals.css      # Neon green dark theme
+│   ├── components/
+│   │   ├── Dashboard.tsx    # Main state management
+│   │   ├── Sidebar.tsx      # Desktop: filters + incident list
+│   │   ├── MobileTopBar.tsx # Mobile: compact filter bar
+│   │   ├── MobileList.tsx   # Mobile: bottom incident list
+│   │   ├── CrimeMap.tsx     # Leaflet map + choropleth
+│   │   └── CategoryIcon.tsx # Geometric shape icons
+│   ├── lib/
+│   │   ├── api.ts           # API client
+│   │   └── i18n.ts          # DE/EN translations
+│   ├── types/
+│   │   └── incident.ts      # TypeScript interfaces
+│   └── public/
+│       └── berlin-bezirke.geojson  # 12 district boundaries
+├── supabase/
+│   └── migrations/
+│       ├── 001_initial_schema.sql
+│       └── 002_bike_thefts.sql
+├── render.yaml              # Render Blueprint config
+└── TODO.md                  # Roadmap
 ```
 
----
+## Tech Stack
 
-## 2. Render 계정 생성 및 연결
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| Frontend | Next.js 16, React 19, Tailwind CSS 4 | Web app |
+| Map | Leaflet + CARTO dark tiles | Interactive map |
+| Backend API | FastAPI (Python 3.11) | REST API |
+| Database | Supabase (PostgreSQL) | Data storage |
+| Hosting (FE) | Vercel (free) | Frontend CDN |
+| Hosting (BE) | Render (free) | API server |
+| Cron | GitHub Actions | Scheduled scraping |
+| Geocoding | Google Maps Geocoding API | Address → coordinates |
+| Translation | Anthropic Claude Haiku | DE → EN title translation |
 
-1. https://render.com → Sign up (GitHub으로 로그인 권장)
-2. Dashboard → New → **Blueprint**
-3. GitHub repo 선택 → `render.yaml` 자동 감지
+## API Endpoints
 
----
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | Health check |
+| GET | `/incidents` | Crime incidents (filter: district, limit, offset) |
+| GET | `/incidents/{id}` | Single incident detail |
+| GET | `/stats` | District statistics |
+| GET | `/config` | App configuration |
+| GET | `/bike-thefts` | Bicycle theft data |
+| GET | `/bike-thefts/by-lor` | Bike thefts aggregated by LOR code |
+| POST | `/reports` | User report submission |
 
-## 3. 환경변수 설정
+**Base URL:** https://dk-crime-api.onrender.com
 
-Blueprint 생성 후 각 서비스에 환경변수 입력:
+## Environment Variables
 
-### berlin-crime-api (Web Service)
+### Backend (.env / GitHub Secrets / Render env)
+
 ```
-SUPABASE_URL        = https://xxxx.supabase.co
-SUPABASE_KEY        = eyJ...service_role_key...
-MAPS_API_KEY        = AIza...
-ANTHROPIC_API_KEY   = sk-ant-...
-ALLOWED_ORIGINS     = https://berlin-crime-map.vercel.app,http://localhost:3000
+SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_KEY=eyJ...                    # service_role key (legacy JWT)
+MAPS_API_KEY=AIza...                   # Google Maps Geocoding
+ANTHROPIC_API_KEY=sk-ant-...           # Claude Haiku translation
 ```
 
-### berlin-crime-scraper (Cron Job)
+### Frontend (.env.local)
+
 ```
-SUPABASE_URL        = (동일)
-SUPABASE_KEY        = (동일)
-MAPS_API_KEY        = (동일)
-ANTHROPIC_API_KEY   = (동일)
+NEXT_PUBLIC_API_URL=https://dk-crime-api.onrender.com
 ```
 
----
+## Cron Schedule
 
-## 4. 배포 확인
+GitHub Actions runs `pipeline.py --max 200` every 12 hours:
 
-Web Service 배포 완료 후:
+| UTC | Berlin (CEST) |
+|-----|---------------|
+| 00:00 | 02:00 |
+| 12:00 | 14:00 |
+
+The pipeline skips already-stored URLs to avoid redundant scraping.
+
+## Local Development
 
 ```bash
-# 헬스체크
-curl https://berlin-crime-api.onrender.com/health
-# → {"status":"ok"}
+# Backend
+cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env  # fill in your keys
+uvicorn main:app --reload
 
-# 사건 목록 (DB에 데이터 없으면 빈 배열)
-curl https://berlin-crime-api.onrender.com/incidents
-# → {"data":[],"count":0}
-
-# 앱 설정 확인
-curl https://berlin-crime-api.onrender.com/config
-# → {"report_enabled":false,"map_default_lat":52.52,...}
+# Frontend
+cd frontend
+npm install
+npm run dev
+# → http://localhost:3000
 ```
 
----
+## Features
 
-## 5. 스크래퍼 수동 실행 (첫 데이터 수집)
+- Dark neon-green theme (Kepler.gl inspired)
+- Choropleth district visualization
+- 4 crime category groups with geometric icons (colorblind-safe)
+- Multi-select category filter
+- Date preset filters (24h / 7d / 30d / All)
+- DE/EN language toggle (UI + titles)
+- Responsive mobile layout
+- Bicycle theft data layer (LOR-based)
 
-Render Dashboard → berlin-crime-scraper → **Trigger Run**
+## Cost
 
-로그에서 확인:
-```
-[INFO] Fetching URL list for 2026...
-[INFO] Found XX candidate URLs
-[INFO] ✓ [theft     ] Nr.0344 | Lichtenberg | Mutmaßliche Wohnungseinbrecher...
-[INFO] Upserted XX incidents to Supabase.
-```
-
----
-
-## 6. 크론 스케줄
-
-`render.yaml`에서 설정:
-```yaml
-schedule: "0 */6 * * *"   # UTC 기준 6시간마다
-```
-
-베를린 시간(CEST, UTC+2) 기준:
-| UTC   | 베를린 |
-|-------|--------|
-| 00:00 | 02:00  |
-| 06:00 | 08:00  |
-| 12:00 | 14:00  |
-| 18:00 | 20:00  |
-
----
-
-## 7. 프리 티어 제한
-
-| 항목 | 제한 |
-|------|------|
-| Web Service | 월 750시간 (1개면 충분) |
-| 비활성 sleep | 15분 미사용 시 슬립 → 첫 요청 ~30초 |
-| Cron Job | 월 750시간 |
-| 빌드 시간 | 월 500분 |
-
-슬립 문제 해결:
-- 프론트엔드에서 `/health` 핑 or UptimeRobot 무료 모니터링 연결
-
----
-
-## 8. API 엔드포인트 요약
-
-| Method | Path | 설명 |
-|--------|------|------|
-| GET | `/health` | 헬스체크 |
-| GET | `/incidents` | 사건 목록 (필터: category, district, lang) |
-| GET | `/incidents/{id}` | 단일 사건 상세 |
-| GET | `/stats` | 지구별 통계 |
-| GET | `/config` | 앱 설정 (report_enabled 등) |
-| POST | `/reports` | 제보 제출 |
+| Service | Cost |
+|---------|------|
+| Supabase | Free tier |
+| Render | Free tier (sleeps after 15min inactivity) |
+| Vercel | Free tier (Hobby plan) |
+| GitHub Actions | Free (public repo) |
+| Google Maps | $200/month free credit |
+| Anthropic | ~$0.01/200 translations (Haiku) |
