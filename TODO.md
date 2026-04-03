@@ -43,6 +43,11 @@
 - [ ] Virtual scrolling — 500+ 사건 목록 성능
 - [ ] Korean language support (KO)
 - [ ] Bottom sheet mobile incident list (현재는 25dvh 고정 영역)
+- [ ] **About / Legal 페이지** (사이드바 ℹ 버튼 → 모달)
+  - 데이터 출처 (Berliner Polizei, Fahrrad-Diebstahl open data)
+  - 면책조항 (비공식, 긴급 상황 사용 금지)
+  - Privacy / GDPR (위치 데이터 처리, IP rate limit, 72h TTL)
+  - Contact (결정 필요: GitHub repo 링크? 이메일? 닉네임 공개 여부?)
 
 ## v1.2 — User Engagement (Phase 2 Reporting)
 - [ ] **Clustering/Voting**: 반경 300m + 같은 카테고리 + 2시간 내 신고 자동 클러스터
