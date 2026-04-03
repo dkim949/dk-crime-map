@@ -14,31 +14,30 @@ import type { Lang } from "@/lib/i18n";
 
 const CrimeMap = dynamic(() => import("./CrimeMap"), { ssr: false });
 
-function getInitialParams(): { lang: Lang; days: number; district: string; groups: string[]; bike: boolean } {
-  if (typeof window === "undefined") return { lang: "de", days: 0, district: "", groups: [], bike: false };
+function getInitialParams(): { lang: Lang; days: number; district: string; groups: string[] } {
+  if (typeof window === "undefined") return { lang: "de", days: 0, district: "", groups: [] };
   const sp = new URLSearchParams(window.location.search);
   return {
     lang: (sp.get("lang") === "en" ? "en" : "de") as Lang,
     days: Number(sp.get("days")) || 0,
     district: sp.get("district") || "",
     groups: sp.get("cat")?.split(",").filter(Boolean) || [],
-    bike: sp.get("bike") === "1",
   };
 }
 
 export default function Dashboard() {
   const init = useRef(getInitialParams());
   const [allIncidents, setAllIncidents] = useState<Incident[]>([]);
+  const [bikeIncidents, setBikeIncidents] = useState<Incident[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeGroups, setActiveGroups] = useState<string[]>(init.current.groups);
   const [district, setDistrict] = useState(init.current.district);
   const [datePreset, setDatePreset] = useState(init.current.days);
   const [lang, setLang] = useState<Lang>(init.current.lang);
-  const [showBikeLayer, setShowBikeLayer] = useState(init.current.bike);
-  const [bikeIncidents, setBikeIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // html lang + URL params 동기화
+  // html lang + URL params sync
   useEffect(() => {
     document.documentElement.lang = lang;
     const sp = new URLSearchParams();
@@ -46,28 +45,27 @@ export default function Dashboard() {
     if (datePreset > 0) sp.set("days", String(datePreset));
     if (district) sp.set("district", district);
     if (activeGroups.length > 0) sp.set("cat", activeGroups.join(","));
-    if (showBikeLayer) sp.set("bike", "1");
     const qs = sp.toString();
-    const url = qs ? `?${qs}` : window.location.pathname;
-    window.history.replaceState(null, "", url);
-  }, [lang, datePreset, district, activeGroups, showBikeLayer]);
-  const [error, setError] = useState<string | null>(null);
+    window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
+  }, [lang, datePreset, district, activeGroups]);
 
+  // Load crime + bike data together
   const load = useCallback(async (retry = 0) => {
     if (retry === 0) {
       setLoading(true);
       setError(null);
     }
     try {
-      const result = await fetchIncidents({
-        district: district || undefined,
-        limit: 500,
-      });
-      if (result.data.length === 0 && retry < 3) {
+      const [crimeResult, bikeData] = await Promise.all([
+        fetchIncidents({ district: district || undefined, limit: 500 }),
+        fetchBikeTheftsAsIncidents(),
+      ]);
+      if (crimeResult.data.length === 0 && retry < 3) {
         setTimeout(() => load(retry + 1), 5000);
         return;
       }
-      setAllIncidents(result.data);
+      setAllIncidents(crimeResult.data);
+      setBikeIncidents(bikeData);
       setLoading(false);
     } catch (e) {
       if (retry < 3) {
@@ -83,17 +81,9 @@ export default function Dashboard() {
     load();
   }, [load]);
 
-  // Load bike theft data when toggled on
-  useEffect(() => {
-    if (!showBikeLayer || bikeIncidents.length > 0) return;
-    fetchBikeTheftsAsIncidents()
-      .then(setBikeIncidents)
-      .catch((e) => console.error("Bike fetch error:", e));
-  }, [showBikeLayer, bikeIncidents.length]);
-
+  // Merge crime + bike, apply filters
   const incidents = useMemo(() => {
-    // Merge crime + bike incidents when bike layer is ON
-    let all = showBikeLayer ? [...allIncidents, ...bikeIncidents] : allIncidents;
+    let all = [...allIncidents, ...bikeIncidents];
 
     if (datePreset > 0) {
       const cutoff = new Date();
@@ -112,39 +102,24 @@ export default function Dashboard() {
       all = all.filter((inc) => allowedCategories.includes(inc.category));
     }
 
-    // Sort by date descending
-    all.sort((a, b) => {
-      const da = a.occurred_at || "";
-      const db = b.occurred_at || "";
-      return db.localeCompare(da);
-    });
-
+    all.sort((a, b) => (b.occurred_at || "").localeCompare(a.occurred_at || ""));
     return all;
-  }, [allIncidents, bikeIncidents, showBikeLayer, datePreset, activeGroups]);
+  }, [allIncidents, bikeIncidents, datePreset, activeGroups]);
 
-  const handleSelect = useCallback((id: string) => {
-    setSelectedId(id);
-  }, []);
-
+  const handleSelect = useCallback((id: string) => setSelectedId(id), []);
   const toggleGroup = useCallback((group: string) => {
     setActiveGroups((prev) =>
       prev.includes(group) ? prev.filter((g) => g !== group) : [...prev, group],
     );
   }, []);
-
   const clearGroups = useCallback(() => setActiveGroups([]), []);
 
   if (error) {
     return (
       <div className="h-[100dvh] flex items-center justify-center bg-bg">
         <div className="text-center space-y-3">
-          <p className="text-accent font-mono text-sm uppercase tracking-widest">
-            {error}
-          </p>
-          <button
-            onClick={() => load()}
-            className="px-4 py-2 bg-bg-surface border border-border text-fg text-xs font-mono hover:border-accent transition-colors duration-150"
-          >
+          <p className="text-accent font-mono text-sm uppercase tracking-widest">{error}</p>
+          <button onClick={() => load()} className="px-4 py-2 bg-bg-surface border border-border text-fg text-xs font-mono hover:border-accent transition-colors duration-150">
             Retry
           </button>
         </div>
@@ -154,7 +129,6 @@ export default function Dashboard() {
 
   return (
     <div className="flex h-[100dvh] md:flex-row max-md:flex-col">
-      {/* Desktop sidebar */}
       <div className="hidden md:flex">
         <Sidebar
           incidents={incidents}
@@ -169,13 +143,10 @@ export default function Dashboard() {
           onDistrictChange={setDistrict}
           onDatePresetChange={setDatePreset}
           onLangChange={setLang}
-          showBikeLayer={showBikeLayer}
-          onToggleBikeLayer={() => setShowBikeLayer((v) => !v)}
           loading={loading}
         />
       </div>
 
-      {/* Mobile top bar */}
       <MobileTopBar
         incidentCount={incidents.length}
         activeGroups={activeGroups}
@@ -185,19 +156,15 @@ export default function Dashboard() {
         onDatePresetChange={setDatePreset}
         lang={lang}
         onLangChange={setLang}
-        showBikeLayer={showBikeLayer}
-        onToggleBikeLayer={() => setShowBikeLayer((v) => !v)}
       />
 
-      {/* Map */}
       <main className="flex-1 relative min-h-0">
-        <MapLegend lang={lang} showBikeLayer={showBikeLayer} />
+        <MapLegend lang={lang} />
         <CrimeMap
           incidents={incidents}
           selectedId={selectedId}
           onSelect={handleSelect}
           lang={lang}
-          showBikeLayer={showBikeLayer}
         />
         {selectedId && (
           <IncidentDetail
@@ -208,7 +175,6 @@ export default function Dashboard() {
         )}
       </main>
 
-      {/* Mobile incident list */}
       <MobileList
         incidents={incidents}
         selectedId={selectedId}

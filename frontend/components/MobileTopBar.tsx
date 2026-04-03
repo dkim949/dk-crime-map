@@ -26,8 +26,6 @@ interface MobileTopBarProps {
   onDatePresetChange: (days: number) => void;
   lang: Lang;
   onLangChange: (lang: Lang) => void;
-  showBikeLayer: boolean;
-  onToggleBikeLayer: () => void;
 }
 
 export default function MobileTopBar({
@@ -39,8 +37,6 @@ export default function MobileTopBar({
   onDatePresetChange,
   lang,
   onLangChange,
-  showBikeLayer,
-  onToggleBikeLayer,
 }: MobileTopBarProps) {
   return (
     <div className="md:hidden bg-bg-raised border-b border-border">
@@ -99,21 +95,6 @@ export default function MobileTopBar({
           }`}
         >
           {t(lang, "all")}
-        </button>
-
-        <span className="shrink-0 w-px h-4 bg-border mx-0.5" />
-
-        {/* Bike layer */}
-        <button
-          onClick={onToggleBikeLayer}
-          className={`shrink-0 px-2.5 py-1 text-[11px] font-mono border rounded-full transition-colors ${
-            showBikeLayer ? "border-[#fbbf24] text-[#fbbf24]" : "border-border text-fg-dim"
-          }`}
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-3 11.5V14l-3-3 4-3 2 3h3"/>
-          </svg>
-          {lang === "de" ? "Rad" : "Bike"}
         </button>
 
         <span className="shrink-0 w-px h-4 bg-border mx-0.5" />
