@@ -7,9 +7,9 @@
   --fg: #e4e4e7;
   --fg-muted: #9ca3af;
   --fg-dim: #6b7280;
-  --accent: #4ade80;
-  --accent-muted: #16a34a;
-  --accent-glow: rgba(74, 222, 128, 0.15);
+  --accent: #a78bfa;
+  --accent-muted: #7c3aed;
+  --accent-glow: rgba(167, 139, 250, 0.15);
   --border: #1e293b;
   --border-bright: #334155;
   --font-sans: var(--font-geist-sans);
@@ -57,7 +57,7 @@ body {
   color: var(--fg) !important;
   border-radius: 2px !important;
   border: 1px solid var(--accent) !important;
-  box-shadow: 0 0 20px rgba(74, 222, 128, 0.12), 0 4px 20px rgba(0, 0, 0, 0.6) !important;
+  box-shadow: 0 0 20px rgba(167, 139, 250, 0.12), 0 4px 20px rgba(0, 0, 0, 0.6) !important;
 }
 
 .leaflet-popup-tip {

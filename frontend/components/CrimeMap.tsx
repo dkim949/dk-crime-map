@@ -4,15 +4,14 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import L from "leaflet";
 import type { Incident } from "@/types/incident";
 import { CATEGORY_GROUPS, getCategoryGroup, getCategoryColor } from "@/types/incident";
-import { fetchBikeTheftsByLor } from "@/lib/api";
+// Bike thefts are merged into incidents — no separate layer needed
 
 const BERLIN_CENTER: [number, number] = [52.52, 13.405];
 const DEFAULT_ZOOM = 11;
 const MARKER_VISIBLE_ZOOM = 13;
 const MARKER_SIZE = 10;
-const CHOROPLETH_FILL = "#4ade80";
+const CHOROPLETH_FILL = "#22d3ee";
 const CHOROPLETH_BORDER = "#1e293b";
-const BIKE_FILL = "#38bdf8";
 const MIN_OPACITY = 0.1;
 const MAX_OPACITY = 0.45;
 
@@ -86,7 +85,6 @@ interface CrimeMapProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   lang: "de" | "en";
-  showBikeLayer: boolean;
 }
 
 export default function CrimeMap({
@@ -94,42 +92,21 @@ export default function CrimeMap({
   selectedId,
   onSelect,
   lang,
-  showBikeLayer,
 }: CrimeMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.LayerGroup | null>(null);
   const choroplethRef = useRef<L.GeoJSON | null>(null);
-  const bikeLayerRef = useRef<L.GeoJSON | null>(null);
   const labelsRef = useRef<L.LayerGroup | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [geoData, setGeoData] = useState<GeoJsonCollection | null>(null);
-  const [lorGeoData, setLorGeoData] = useState<GeoJsonCollection | null>(null);
-  const [bikeCounts, setBikeCounts] = useState<Record<string, number>>({});
   const [markersVisible, setMarkersVisible] = useState(DEFAULT_ZOOM >= MARKER_VISIBLE_ZOOM);
 
-  // Load GeoJSON files
   useEffect(() => {
     fetch("/berlin-bezirke.geojson")
       .then((r) => r.json())
       .then(setGeoData)
-      .catch((e) => console.error("Failed to load bezirke GeoJSON:", e));
-
-    fetch("/lor-planungsraeume.geojson")
-      .then((r) => r.json())
-      .then(setLorGeoData)
-      .catch((e) => console.error("Failed to load LOR GeoJSON:", e));
+      .catch((e) => console.error("Failed to load GeoJSON:", e));
   }, []);
-
-  // Load bike theft counts
-  useEffect(() => {
-    if (!showBikeLayer) return;
-    fetchBikeTheftsByLor()
-      .then((r) => {
-        console.log("[BikeLayer] API data:", Object.keys(r.data).length, "LOR codes");
-        setBikeCounts(r.data);
-      })
-      .catch((e) => console.error("[BikeLayer] API error:", e));
-  }, [showBikeLayer]);
 
   const handleZoom = useCallback(() => {
     if (!mapRef.current) return;
@@ -161,7 +138,6 @@ export default function CrimeMap({
     if (!mapRef.current || !geoData) return;
     if (choroplethRef.current) { choroplethRef.current.remove(); choroplethRef.current = null; }
     if (labelsRef.current) labelsRef.current.clearLayers();
-    if (showBikeLayer) return; // bike layer가 켜져있으면 crime choropleth 안 그림
 
     const districtCounts = countByDistrict(incidents);
     const maxCount = Math.max(...Object.values(districtCounts), 1);
@@ -182,14 +158,14 @@ export default function CrimeMap({
         const name = feature.properties?.name || "";
         const count = matchDistrictName(name, districtCounts);
         layer.bindTooltip(
-          `<div style="font-family:var(--font-mono),monospace;font-size:12px;padding:6px 10px;background:#12121aee;color:#e4e4e7;border:1px solid #4ade8044;">
-            <span style="font-weight:700;color:#4ade80">${name}</span>
+          `<div style="font-family:var(--font-mono),monospace;font-size:12px;padding:6px 10px;background:#12121aee;color:#e4e4e7;border:1px solid #22d3ee44;">
+            <span style="font-weight:700;color:#22d3ee">${name}</span>
             <span style="color:#9ca3af;margin-left:6px">${count}</span>
           </div>`,
           { sticky: true, direction: "top", offset: [0, -10], className: "choropleth-tooltip" },
         );
         layer.on("mouseover", () => {
-          (layer as L.Path).setStyle({ weight: 2, color: "#4ade8066", fillOpacity: Math.min(computeOpacity(count, maxCount) + 0.15, 0.75) });
+          (layer as L.Path).setStyle({ weight: 2, color: "#22d3ee66", fillOpacity: Math.min(computeOpacity(count, maxCount) + 0.15, 0.75) });
         });
         layer.on("mouseout", () => choropleth.resetStyle(layer));
       },
@@ -210,7 +186,7 @@ export default function CrimeMap({
       L.marker(center, {
         icon: L.divIcon({
           className: "",
-          html: `<div style="font-family:var(--font-mono),monospace;font-size:13px;font-weight:700;color:#4ade80;text-shadow:0 0 8px #0a0a0f,0 0 4px #0a0a0f;text-align:center;white-space:nowrap">${count}</div>`,
+          html: `<div style="font-family:var(--font-mono),monospace;font-size:13px;font-weight:700;color:#22d3ee;text-shadow:0 0 8px #0a0a0f,0 0 4px #0a0a0f;text-align:center;white-space:nowrap">${count}</div>`,
           iconSize: [40, 20],
           iconAnchor: [20, 10],
         }),
@@ -222,56 +198,7 @@ export default function CrimeMap({
       if (choroplethRef.current) { choroplethRef.current.remove(); choroplethRef.current = null; }
       if (labelsRef.current) labelsRef.current.clearLayers();
     };
-  }, [geoData, incidents, showBikeLayer]);
-
-  // Bike theft choropleth (LOR Planungsraum level)
-  useEffect(() => {
-    if (!mapRef.current) return;
-    if (bikeLayerRef.current) { bikeLayerRef.current.remove(); bikeLayerRef.current = null; }
-    if (!showBikeLayer || !lorGeoData || Object.keys(bikeCounts).length === 0) {
-      console.log("[BikeLayer] Skip render:", { showBikeLayer, lorGeoLoaded: !!lorGeoData, bikeCountsLen: Object.keys(bikeCounts).length });
-      return;
-    }
-
-    const maxCount = Math.max(...Object.values(bikeCounts), 1);
-    console.log("[BikeLayer] Rendering:", Object.keys(bikeCounts).length, "LORs, maxCount:", maxCount);
-
-    const bikeLayer = L.geoJSON(lorGeoData as GeoJSON.FeatureCollection, {
-      style: (feature) => {
-        const plrId = feature?.properties?.PLR_ID || "";
-        const count = bikeCounts[plrId] || 0;
-        return {
-          fillColor: BIKE_FILL,
-          fillOpacity: count > 0 ? computeOpacity(count, maxCount) : 0,
-          color: count > 0 ? "#38bdf833" : "transparent",
-          weight: count > 0 ? 1 : 0,
-        };
-      },
-      onEachFeature: (feature, layer) => {
-        const plrId = feature?.properties?.PLR_ID || "";
-        const name = feature?.properties?.PLR_NAME || plrId;
-        const count = bikeCounts[plrId] || 0;
-        if (count === 0) return;
-
-        layer.bindTooltip(
-          `<div style="font-family:var(--font-mono),monospace;font-size:12px;padding:6px 10px;background:#12121aee;color:#e4e4e7;border:1px solid #38bdf844;">
-            <span style="font-weight:700;color:#38bdf8">${name}</span>
-            <span style="color:#9ca3af;margin-left:6px">${count} ${lang === "de" ? "Diebstähle" : "thefts"}</span>
-          </div>`,
-          { sticky: true, direction: "top", offset: [0, -10], className: "choropleth-tooltip" },
-        );
-        layer.on("mouseover", () => {
-          (layer as L.Path).setStyle({ weight: 2, color: "#38bdf866", fillOpacity: Math.min(computeOpacity(count, maxCount) + 0.15, 0.75) });
-        });
-        layer.on("mouseout", () => bikeLayer.resetStyle(layer));
-      },
-    });
-    bikeLayer.addTo(mapRef.current);
-    // Bike layer on top of crime choropleth, but behind markers
-    if (choroplethRef.current) choroplethRef.current.bringToBack();
-    bikeLayerRef.current = bikeLayer;
-    return () => { if (bikeLayerRef.current) { bikeLayerRef.current.remove(); bikeLayerRef.current = null; } };
-  }, [lorGeoData, bikeCounts, showBikeLayer]);
+  }, [geoData, incidents]);
 
   // Markers
   useEffect(() => {

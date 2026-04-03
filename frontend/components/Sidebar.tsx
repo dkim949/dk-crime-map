@@ -53,8 +53,6 @@ interface SidebarProps {
   onDistrictChange: (v: string) => void;
   onDatePresetChange: (days: number) => void;
   onLangChange: (lang: Lang) => void;
-  showBikeLayer: boolean;
-  onToggleBikeLayer: () => void;
   loading: boolean;
 }
 
@@ -71,8 +69,6 @@ export default function Sidebar({
   onDistrictChange,
   onDatePresetChange,
   onLangChange,
-  showBikeLayer,
-  onToggleBikeLayer,
   loading,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
@@ -264,24 +260,6 @@ export default function Sidebar({
               </select>
             </label>
 
-            {/* Bike theft layer toggle */}
-            <button
-              onClick={onToggleBikeLayer}
-              className={`w-full flex items-center justify-between py-2 px-2 text-[11px] font-mono border transition-all duration-150 ${
-                showBikeLayer
-                  ? "border-[#fbbf24] text-[#fbbf24]"
-                  : "border-border text-fg-dim hover:text-fg hover:border-border-bright"
-              }`}
-              style={showBikeLayer ? { background: "#fbbf2412", boxShadow: "0 0 10px #fbbf2420" } : {}}
-            >
-              <span className="flex items-center gap-1.5">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-3 11.5V14l-3-3 4-3 2 3h3"/>
-                </svg>
-                {lang === "de" ? "Fahrraddiebstahl" : "Bike Theft"}
-              </span>
-              <span>{showBikeLayer ? "ON" : "OFF"}</span>
-            </button>
             </div>
           </div>
 
