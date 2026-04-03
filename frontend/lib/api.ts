@@ -36,7 +36,7 @@ export async function fetchStats(): Promise<{ data: DistrictStat[] }> {
 
 export async function fetchBikeTheftsAsIncidents(): Promise<Incident[]> {
   const [theftsRes, centroidsRes] = await Promise.all([
-    fetch(`${API_BASE}/bike-thefts?limit=500`, { cache: "no-store" }),
+    fetch(`${API_BASE}/bike-thefts?limit=2000`, { cache: "no-store" }),
     fetch("/lor-centroids.json"),
   ]);
   if (!theftsRes.ok) return [];

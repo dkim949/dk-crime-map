@@ -79,7 +79,7 @@ def health():
 def get_incidents(
     category: Optional[str] = None,
     district: Optional[str] = None,
-    limit: int = 200,
+    limit: int = 5000,
     offset: int = 0,
 ):
     """
@@ -88,7 +88,7 @@ def get_incidents(
     Query params:
       category  : theft | assault | shooting | ...
       district  : Mitte | Lichtenberg | ...
-      limit     : 최대 200
+      limit     : 최대 5000
       offset    : 페이지네이션
       lang      : 제목 언어 선택
     """
@@ -97,7 +97,7 @@ def get_incidents(
         db.table("public_incidents")
         .select("id, source, title_de, title_en, district, address_raw, lat, lng, category, occurred_at, scraped_at")
         .order("occurred_at", desc=True)
-        .limit(min(limit, 500))
+        .limit(min(limit, 5000))
         .offset(offset)
     )
 

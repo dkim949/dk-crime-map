@@ -57,7 +57,7 @@ export default function Dashboard() {
     }
     try {
       const [crimeResult, bikeData] = await Promise.all([
-        fetchIncidents({ district: district || undefined, limit: 500 }),
+        fetchIncidents({ district: district || undefined, limit: 5000 }),
         fetchBikeTheftsAsIncidents(),
       ]);
       if (crimeResult.data.length === 0 && retry < 3) {
