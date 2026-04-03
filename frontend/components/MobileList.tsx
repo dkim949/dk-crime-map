@@ -28,9 +28,19 @@ export default function MobileList({
   return (
     <div className="md:hidden h-[25dvh] bg-bg-raised border-t border-border overflow-y-auto">
       {loading ? (
-        <div className="py-6 text-center text-fg-dim text-xs font-mono">
-          {t(lang, "loading")}
-        </div>
+        <ul>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <li key={i} className="px-3 py-2 border-b border-border">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-sm bg-bg-surface animate-pulse shrink-0" />
+                <div className="flex-1 space-y-1">
+                  <div className="h-3 rounded bg-bg-surface animate-pulse w-3/4" />
+                  <div className="h-2.5 rounded bg-bg-surface animate-pulse w-1/3" />
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
       ) : incidents.length === 0 ? (
         <div className="py-6 text-center text-fg-dim text-xs font-mono">
           {t(lang, "noIncidents")}

@@ -87,6 +87,7 @@ interface CrimeMapProps {
   incidents: Incident[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onDistrictClick?: (district: string) => void;
   lang: "de" | "en";
 }
 
@@ -94,6 +95,7 @@ export default function CrimeMap({
   incidents,
   selectedId,
   onSelect,
+  onDistrictClick,
   lang,
 }: CrimeMapProps) {
   const mapRef = useRef<L.Map | null>(null);
@@ -174,6 +176,7 @@ export default function CrimeMap({
           (layer as L.Path).setStyle({ weight: 2, color: `${heatColor}88`, fillOpacity: Math.min(CHOROPLETH_OPACITY + 0.15, 0.7) });
         });
         layer.on("mouseout", () => choropleth.resetStyle(layer));
+        layer.on("click", () => onDistrictClick?.(name));
       },
     });
     choropleth.addTo(mapRef.current);
@@ -204,7 +207,7 @@ export default function CrimeMap({
       if (choroplethRef.current) { choroplethRef.current.remove(); choroplethRef.current = null; }
       if (labelsRef.current) labelsRef.current.clearLayers();
     };
-  }, [geoData, incidents]);
+  }, [geoData, incidents, onDistrictClick]);
 
   // Markers
   useEffect(() => {

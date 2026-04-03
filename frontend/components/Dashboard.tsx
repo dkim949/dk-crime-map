@@ -166,6 +166,7 @@ export default function Dashboard() {
           incidents={incidents}
           selectedId={selectedId}
           onSelect={handleSelect}
+          onDistrictClick={setDistrict}
           lang={lang}
         />
         {selectedId && (

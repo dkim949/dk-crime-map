@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import type { Incident } from "@/types/incident";
 import { CATEGORY_GROUPS, getCategoryGroup } from "@/types/incident";
 import { t, type Lang } from "@/lib/i18n";
@@ -73,6 +73,13 @@ export default function Sidebar({
   const [collapsed, setCollapsed] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(true);
   const geoCount = incidents.filter((i) => i.lat != null).length;
+  const listRef = useRef<HTMLUListElement>(null);
+
+  useEffect(() => {
+    if (!selectedId || !listRef.current) return;
+    const el = listRef.current.querySelector(`[data-id="${selectedId}"]`);
+    el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [selectedId]);
 
   return (
     <aside
@@ -265,21 +272,32 @@ export default function Sidebar({
           {/* Incident List */}
           <div className="flex-1 overflow-y-auto">
             {loading ? (
-              <div className="px-4 py-8 text-center text-fg-dim text-xs font-mono">
-                {t(lang, "loading")}
-              </div>
+              <ul>
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <li key={i} className="px-4 py-2.5 border-b border-border">
+                    <div className="flex items-start gap-2.5">
+                      <div className="mt-1.5 w-4 h-4 rounded-sm bg-bg-surface animate-pulse shrink-0" />
+                      <div className="flex-1 space-y-1.5">
+                        <div className="h-3 rounded bg-bg-surface animate-pulse w-3/4" />
+                        <div className="h-2.5 rounded bg-bg-surface animate-pulse w-1/2" />
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             ) : incidents.length === 0 ? (
               <div className="px-4 py-8 text-center text-fg-dim text-xs font-mono">
                 {t(lang, "noIncidents")}
               </div>
             ) : (
-              <ul>
+              <ul ref={listRef}>
                 {incidents.map((inc) => {
                   const groupKey = getCategoryGroup(inc.category);
                   const group = CATEGORY_GROUPS[groupKey];
                   return (
                     <li
                       key={inc.id}
+                      data-id={inc.id}
                       onClick={() => onSelect(inc.id)}
                       className={`
                         px-4 py-2.5 border-b border-border cursor-pointer
