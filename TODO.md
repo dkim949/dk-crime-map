@@ -58,7 +58,14 @@
 - [ ] Real-time update (polling 또는 Supabase Realtime)
 - [ ] Push notifications for specific district/category (PWA)
 
-## v1.3 — Data Expansion
+## v1.3 — User Engagement (Phase 3)
+- [ ] **Photo reporting** — 사진 첨부 신고 (Supabase Storage)
+  - GDPR 주의: 얼굴/번호판 포함 가능 → 업로드 전 모더레이션 또는 blur 처리 필요
+  - 콘텐츠 모더레이션 없이 즉시 공개 불가 (법적 리스크)
+  - 72h TTL 적용 시 파일 삭제 로직 별도 필요
+  - Phase 2 클러스터링 이후 도입 권장
+
+## v1.4 — Data Expansion
 - [ ] Feuerwehr (fire dept) incident data — CSV from GitHub open data
 - [ ] Presseportal Blaulicht RSS — federal police, customs, THW
 - [ ] Kriminalitätsatlas background statistics (biannual)

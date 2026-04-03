@@ -123,13 +123,6 @@ export default function Dashboard() {
   const handleSelect = useCallback((id: string) => setSelectedId(id), []);
 
   const handleStartReport = useCallback(() => {
-    if (reportMode) {
-      // 이미 모드 켜져있으면 취소
-      setReportMode(false);
-      setReportPin(null);
-      setGeoError(false);
-      return;
-    }
     if (!navigator.geolocation) {
       setGeoError(true);
       return;
@@ -140,7 +133,7 @@ export default function Dashboard() {
         setReportPin({ lat: coords.latitude, lng: coords.longitude });
         setReportMode(true);
         setGeoError(false);
-        setShowReportSheet(true);
+        // Step 1: 위치 선택 화면 — Sheet는 아직 안 열림
       },
       () => {
         setGeoError(true);
@@ -148,10 +141,14 @@ export default function Dashboard() {
       },
       { enableHighAccuracy: true, timeout: 10000 },
     );
-  }, [reportMode]);
+  }, []);
 
   const handleReportPin = useCallback((lat: number, lng: number) => {
     setReportPin({ lat, lng });
+    // Sheet는 자동으로 열지 않음 — 사용자가 "위치 확인" 버튼을 눌러야 열림
+  }, []);
+
+  const handleConfirmLocation = useCallback(() => {
     setShowReportSheet(true);
   }, []);
 
@@ -244,21 +241,13 @@ export default function Dashboard() {
           onReportPin={handleReportPin}
         />
 
-        {/* Report FAB */}
-        {!showReportSheet && (
+        {/* Report FAB — Step 1, 2 중에는 숨김 */}
+        {!reportMode && !showReportSheet && (
           <button
             onClick={handleStartReport}
-            className={`
-              absolute bottom-4 right-4 z-[1000] px-3 py-2
-              text-[11px] font-mono uppercase tracking-widest border
-              transition-all duration-150
-              ${reportMode
-                ? "bg-accent text-bg border-accent"
-                : "bg-bg-raised text-fg-dim border-border hover:text-accent hover:border-accent"
-              }
-            `}
+            className="absolute bottom-4 right-4 z-[1000] px-3 py-2 text-[11px] font-mono uppercase tracking-widest border bg-bg-raised text-fg-dim border-border hover:text-accent hover:border-accent transition-all duration-150"
           >
-            {reportMode ? "✕ " : "+ "}{t(lang, "reportBtn")}
+            + {t(lang, "reportBtn")}
           </button>
         )}
 
@@ -271,10 +260,32 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Report mode hint */}
+        {/* Step 1: 위치 선택 바 */}
         {reportMode && !showReportSheet && (
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-bg-raised/90 border border-accent/50 px-3 py-1.5 text-[11px] font-mono text-accent pointer-events-none">
-            {t(lang, "reportPlacePin")}
+          <div className="absolute bottom-0 inset-x-0 z-[1000] bg-bg-raised border-t border-accent/50 px-4 pt-3 pb-4">
+            <p className="text-[11px] font-mono text-accent mb-0.5">
+              📍 {reportPin ? `${reportPin.lat.toFixed(4)}, ${reportPin.lng.toFixed(4)}` : "..."}
+            </p>
+            <p className="text-[10px] font-mono text-fg-dim mb-3">
+              {lang === "de"
+                ? "Karte tippen oder Pin ziehen, um Position anzupassen"
+                : "Tap map or drag pin to adjust location"}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={handleReportClose}
+                className="flex-1 py-2 border border-border text-xs font-mono text-fg-dim hover:text-fg transition-colors"
+              >
+                {t(lang, "reportCancel")}
+              </button>
+              <button
+                onClick={handleConfirmLocation}
+                disabled={!reportPin}
+                className="flex-1 py-2 bg-accent text-bg border border-accent text-xs font-mono hover:opacity-90 disabled:opacity-50 transition-opacity"
+              >
+                {lang === "de" ? "Ort bestätigen →" : "Confirm location →"}
+              </button>
+            </div>
           </div>
         )}
 
@@ -304,13 +315,15 @@ export default function Dashboard() {
         )}
       </main>
 
-      <MobileList
-        incidents={incidents}
-        selectedId={selectedId}
-        onSelect={handleSelect}
-        lang={lang}
-        loading={loading}
-      />
+      {!reportMode && (
+        <MobileList
+          incidents={incidents}
+          selectedId={selectedId}
+          onSelect={handleSelect}
+          lang={lang}
+          loading={loading}
+        />
+      )}
     </div>
   );
 }

@@ -195,16 +195,24 @@ export default function CrimeMap({
     if (!mapRef.current) return;
     if (reportPinMarkerRef.current) { reportPinMarkerRef.current.remove(); reportPinMarkerRef.current = null; }
     if (!reportPin) return;
-    reportPinMarkerRef.current = L.marker([reportPin.lat, reportPin.lng], {
+    const marker = L.marker([reportPin.lat, reportPin.lng], {
       icon: L.divIcon({
         className: "",
-        html: `<div style="width:16px;height:16px;background:#e0115f;border-radius:50%;border:2px solid #fff;box-shadow:0 0 12px #e0115f99;transform:translate(-50%,-50%)"></div>`,
-        iconSize: [0, 0],
-        iconAnchor: [0, 0],
+        html: `<div style="width:16px;height:16px;background:#e0115f;border-radius:50%;border:2px solid #fff;box-shadow:0 0 12px #e0115f99;cursor:grab"></div>`,
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
       }),
-      interactive: false,
+      draggable: true,
+      interactive: true,
     }).addTo(mapRef.current);
-  }, [reportPin]);
+    if (onReportPin) {
+      marker.on("dragend", () => {
+        const { lat, lng } = marker.getLatLng();
+        onReportPin(lat, lng);
+      });
+    }
+    reportPinMarkerRef.current = marker;
+  }, [reportPin, onReportPin]);
 
   // Crime choropleth (Bezirk level) — bike layer ON이면 숨김
   useEffect(() => {
