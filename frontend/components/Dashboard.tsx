@@ -7,7 +7,7 @@ import MobileTopBar from "./MobileTopBar";
 import MobileList from "./MobileList";
 import MapLegend from "./MapLegend";
 import IncidentDetail from "./IncidentDetail";
-import { fetchIncidents } from "@/lib/api";
+import { fetchIncidents, fetchBikeTheftsAsIncidents } from "@/lib/api";
 import type { Incident } from "@/types/incident";
 import { CATEGORY_GROUPS } from "@/types/incident";
 import type { Lang } from "@/lib/i18n";
@@ -35,6 +35,7 @@ export default function Dashboard() {
   const [datePreset, setDatePreset] = useState(init.current.days);
   const [lang, setLang] = useState<Lang>(init.current.lang);
   const [showBikeLayer, setShowBikeLayer] = useState(init.current.bike);
+  const [bikeIncidents, setBikeIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
 
   // html lang + URL params 동기화
@@ -82,14 +83,23 @@ export default function Dashboard() {
     load();
   }, [load]);
 
+  // Load bike theft data when toggled on
+  useEffect(() => {
+    if (!showBikeLayer || bikeIncidents.length > 0) return;
+    fetchBikeTheftsAsIncidents()
+      .then(setBikeIncidents)
+      .catch((e) => console.error("Bike fetch error:", e));
+  }, [showBikeLayer, bikeIncidents.length]);
+
   const incidents = useMemo(() => {
-    let filtered = allIncidents;
+    // Merge crime + bike incidents when bike layer is ON
+    let all = showBikeLayer ? [...allIncidents, ...bikeIncidents] : allIncidents;
 
     if (datePreset > 0) {
       const cutoff = new Date();
       cutoff.setDate(cutoff.getDate() - datePreset);
       const cutoffStr = cutoff.toISOString().slice(0, 10);
-      filtered = filtered.filter((inc) => {
+      all = all.filter((inc) => {
         if (!inc.occurred_at) return false;
         return inc.occurred_at.slice(0, 10) >= cutoffStr;
       });
@@ -99,13 +109,18 @@ export default function Dashboard() {
       const allowedCategories = activeGroups.flatMap(
         (g) => CATEGORY_GROUPS[g]?.sources || [],
       );
-      filtered = filtered.filter((inc) =>
-        allowedCategories.includes(inc.category),
-      );
+      all = all.filter((inc) => allowedCategories.includes(inc.category));
     }
 
-    return filtered;
-  }, [allIncidents, datePreset, activeGroups]);
+    // Sort by date descending
+    all.sort((a, b) => {
+      const da = a.occurred_at || "";
+      const db = b.occurred_at || "";
+      return db.localeCompare(da);
+    });
+
+    return all;
+  }, [allIncidents, bikeIncidents, showBikeLayer, datePreset, activeGroups]);
 
   const handleSelect = useCallback((id: string) => {
     setSelectedId(id);

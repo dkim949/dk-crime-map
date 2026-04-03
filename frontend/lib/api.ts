@@ -34,6 +34,36 @@ export async function fetchStats(): Promise<{ data: DistrictStat[] }> {
   return res.json();
 }
 
+export async function fetchBikeTheftsAsIncidents(): Promise<Incident[]> {
+  const [theftsRes, centroidsRes] = await Promise.all([
+    fetch(`${API_BASE}/bike-thefts?limit=500`, { cache: "no-store" }),
+    fetch("/lor-centroids.json"),
+  ]);
+  if (!theftsRes.ok) return [];
+  const { data } = await theftsRes.json();
+  const centroids: Record<string, [number, number]> = centroidsRes.ok
+    ? await centroidsRes.json()
+    : {};
+
+  return (data || []).map((bt: Record<string, string | number | boolean>, i: number) => {
+    const lor = String(bt.lor_code || "");
+    const [lat, lng] = centroids[lor] || [null, null];
+    return {
+      id: `bike-${i}-${lor}`,
+      source: "fahrrad_data",
+      title_de: `Fahrraddiebstahl — ${bt.bike_type || "Fahrrad"} (${bt.damage_eur || 0}€)`,
+      title_en: `Bike theft — ${bt.bike_type || "Bicycle"} (${bt.damage_eur || 0}€)`,
+      district: bt.district || null,
+      address_raw: null,
+      lat,
+      lng,
+      category: "theft",
+      occurred_at: bt.occurred_at || null,
+      scraped_at: "",
+    } as Incident;
+  });
+}
+
 export async function fetchBikeTheftsByLor(): Promise<{ data: Record<string, number> }> {
   const res = await fetch(`${API_BASE}/bike-thefts/by-lor`, {
     cache: "no-store",
