@@ -100,6 +100,7 @@ export default function CrimeMap({
   const markersRef = useRef<L.LayerGroup | null>(null);
   const choroplethRef = useRef<L.GeoJSON | null>(null);
   const bikeLayerRef = useRef<L.GeoJSON | null>(null);
+  const labelsRef = useRef<L.LayerGroup | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [geoData, setGeoData] = useState<GeoJsonCollection | null>(null);
   const [lorGeoData, setLorGeoData] = useState<GeoJsonCollection | null>(null);
@@ -149,6 +150,7 @@ export default function CrimeMap({
       .addAttribution('&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>')
       .addTo(map);
     markersRef.current = L.layerGroup().addTo(map);
+    labelsRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
     map.on("zoomend", handleZoom);
     return () => { map.off("zoomend", handleZoom); map.remove(); mapRef.current = null; };
@@ -158,6 +160,7 @@ export default function CrimeMap({
   useEffect(() => {
     if (!mapRef.current || !geoData) return;
     if (choroplethRef.current) { choroplethRef.current.remove(); choroplethRef.current = null; }
+    if (labelsRef.current) labelsRef.current.clearLayers();
     if (showBikeLayer) return; // bike layer가 켜져있으면 crime choropleth 안 그림
 
     const districtCounts = countByDistrict(incidents);
@@ -194,7 +197,31 @@ export default function CrimeMap({
     choropleth.addTo(mapRef.current);
     choropleth.bringToBack();
     choroplethRef.current = choropleth;
-    return () => { if (choroplethRef.current) { choroplethRef.current.remove(); choroplethRef.current = null; } };
+
+    // District count labels
+    if (labelsRef.current) labelsRef.current.clearLayers();
+    choropleth.eachLayer((layer) => {
+      const feature = (layer as unknown as { feature?: GeoJSON.Feature }).feature;
+      if (!feature) return;
+      const name = feature.properties?.name || "";
+      const count = matchDistrictName(name, districtCounts);
+      if (count === 0) return;
+      const center = (layer as L.Polygon).getBounds().getCenter();
+      L.marker(center, {
+        icon: L.divIcon({
+          className: "",
+          html: `<div style="font-family:var(--font-mono),monospace;font-size:13px;font-weight:700;color:#4ade80;text-shadow:0 0 8px #0a0a0f,0 0 4px #0a0a0f;text-align:center;white-space:nowrap">${count}</div>`,
+          iconSize: [40, 20],
+          iconAnchor: [20, 10],
+        }),
+        interactive: false,
+      }).addTo(labelsRef.current!);
+    });
+
+    return () => {
+      if (choroplethRef.current) { choroplethRef.current.remove(); choroplethRef.current = null; }
+      if (labelsRef.current) labelsRef.current.clearLayers();
+    };
   }, [geoData, incidents, showBikeLayer]);
 
   // Bike theft choropleth (LOR Planungsraum level)
