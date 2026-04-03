@@ -34,7 +34,7 @@ export interface CategoryGroup {
 export const CATEGORY_GROUPS: Record<string, CategoryGroup> = {
   violent: {
     label: { de: "Gewalt", en: "Violent" },
-    color: "#60a5fa",
+    color: "#e0115f",
     shape: "triangle",
     sources: ["assault", "shooting", "homicide"],
   },

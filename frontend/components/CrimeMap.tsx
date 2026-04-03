@@ -268,7 +268,7 @@ export default function CrimeMap({
       <div ref={containerRef} className="w-full h-full" />
       <button
         onClick={handleLocate}
-        className="absolute bottom-8 left-2 z-[1000] w-8 h-8 bg-bg-raised border border-border text-fg-dim hover:text-accent flex items-center justify-center transition-colors duration-150"
+        className="absolute top-[78px] left-[10px] z-[1000] w-[26px] h-[26px] bg-bg-raised border border-border text-fg-dim hover:text-accent flex items-center justify-center transition-colors duration-150"
         title={lang === "de" ? "Meinen Standort" : "My location"}
       >
         <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
