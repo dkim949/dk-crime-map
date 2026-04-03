@@ -245,7 +245,7 @@ class ReportPayload(BaseModel):
 async def submit_report(payload: ReportPayload, request: Request):
     """
     제보 제출.
-    - Rate limit: IP당 1시간에 1건
+    - Rate limit: IP당 1시간에 3건 (성공한 신고만 카운트)
     - Cloudflare Turnstile 검증
     - 제보자 위치 제공 시 반경 10km 이내 검증
     - TTL: 72시간 후 자동 숨김 (DB에는 유지)
@@ -253,11 +253,10 @@ async def submit_report(payload: ReportPayload, request: Request):
     client_ip = request.client.host
     now = time.time()
 
-    # 1시간에 1건 제한
+    # 1시간에 3건 제한 (체크만 — 카운트는 성공 후에)
     report_hits = [t for t in _rate_limit.get(f"report:{client_ip}", []) if now - t < 3600]
-    if len(report_hits) >= 1:
+    if len(report_hits) >= 3:
         raise HTTPException(status_code=429, detail="Too many requests. Please try again in 1 hour.")
-    _rate_limit[f"report:{client_ip}"] = report_hits + [now]
 
     # Turnstile 검증
     if not _verify_turnstile(payload.turnstile_token):
@@ -287,6 +286,9 @@ async def submit_report(payload: ReportPayload, request: Request):
 
     if not incident_id:
         raise HTTPException(status_code=500, detail="Failed to save report.")
+
+    # 성공한 경우에만 rate limit 카운트
+    _rate_limit[f"report:{client_ip}"] = report_hits + [now]
 
     return {"id": incident_id, "status": "pending_review", "expires_at": expires_at}
 
