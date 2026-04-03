@@ -21,6 +21,11 @@ export default function Dashboard() {
   const [lang, setLang] = useState<Lang>("de");
   const [showBikeLayer, setShowBikeLayer] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // html lang 동기화
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {

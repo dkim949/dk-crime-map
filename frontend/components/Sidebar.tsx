@@ -96,7 +96,7 @@ export default function Sidebar({
               <h1 className="text-sm font-bold tracking-tight uppercase text-accent">
                 Berlin Crime Map
               </h1>
-              <div className="flex text-[10px] font-mono">
+              <div className="flex text-[11px] font-mono">
                 <button
                   onClick={() => onLangChange("de")}
                   className={`px-2 py-0.5 border border-border transition-colors duration-150 ${
@@ -120,7 +120,7 @@ export default function Sidebar({
               </div>
             </div>
             <p className="text-[11px] text-fg-dim font-mono tabular-nums mt-0.5">
-              {incidents.length} {t(lang, "incidents")} · {geoCount} {t(lang, "mapped")}
+              {incidents.length} {t(lang, "incidents")}
             </p>
           </div>
         )}
@@ -140,7 +140,7 @@ export default function Sidebar({
               onClick={() => setFiltersOpen(!filtersOpen)}
               className="w-full px-4 py-2 flex items-center justify-between md:hidden"
             >
-              <span className="text-[10px] font-mono text-fg-dim uppercase tracking-widest">
+              <span className="text-[11px] font-mono text-fg-dim uppercase tracking-widest">
                 Filter
               </span>
               <span className="text-fg-dim text-xs">{filtersOpen ? "▲" : "▼"}</span>
@@ -148,7 +148,7 @@ export default function Sidebar({
             <div className={`px-4 pb-3 space-y-2 ${filtersOpen ? "" : "max-md:hidden"} md:pt-3`}>
             {/* Period */}
             <div>
-              <span className="text-[10px] font-mono text-fg-dim uppercase tracking-widest">
+              <span className="text-[11px] font-mono text-fg-dim uppercase tracking-widest">
                 {t(lang, "period")}
               </span>
               <div className="mt-1 flex">
@@ -186,7 +186,7 @@ export default function Sidebar({
 
             {/* Category groups */}
             <div>
-              <span className="text-[10px] font-mono text-fg-dim uppercase tracking-widest">
+              <span className="text-[11px] font-mono text-fg-dim uppercase tracking-widest">
                 {t(lang, "category")}
               </span>
               <div className="mt-1 flex gap-1.5">
@@ -200,7 +200,7 @@ export default function Sidebar({
                         onClick={() => onToggleGroup(key)}
                         className={`
                           flex-1 flex items-center justify-center gap-1.5
-                          py-2 text-[10px] font-mono border
+                          py-2 text-[11px] font-mono border
                           transition-all duration-150
                           ${activeGroups.includes(key)
                             ? "border-current"
@@ -232,7 +232,7 @@ export default function Sidebar({
                   onClick={() => onClearGroups()}
                   className={`
                     flex-1 flex items-center justify-center
-                    py-2 text-[10px] font-mono border
+                    py-2 text-[11px] font-mono border
                     transition-all duration-150
                     ${activeGroups.length === 0
                       ? "bg-accent text-bg border-accent"
@@ -247,7 +247,7 @@ export default function Sidebar({
 
             {/* District */}
             <label className="block">
-              <span className="text-[10px] font-mono text-fg-dim uppercase tracking-widest">
+              <span className="text-[11px] font-mono text-fg-dim uppercase tracking-widest">
                 {t(lang, "district")}
               </span>
               <select
@@ -267,7 +267,7 @@ export default function Sidebar({
             {/* Bike theft layer toggle */}
             <button
               onClick={onToggleBikeLayer}
-              className={`w-full flex items-center justify-between py-2 px-2 text-[10px] font-mono border transition-all duration-150 ${
+              className={`w-full flex items-center justify-between py-2 px-2 text-[11px] font-mono border transition-all duration-150 ${
                 showBikeLayer
                   ? "border-[#fbbf24] text-[#fbbf24]"
                   : "border-border text-fg-dim hover:text-fg hover:border-border-bright"
@@ -326,16 +326,16 @@ export default function Sidebar({
                           </p>
                           <div className="flex items-center gap-2 mt-0.5">
                             <span
-                              className="text-[10px] font-mono uppercase"
+                              className="text-[11px] font-mono uppercase"
                               style={{ color: group.color }}
                             >
                               {group.label[lang]}
                             </span>
-                            <span className="text-[10px] text-fg-dim">
+                            <span className="text-[11px] text-fg-dim">
                               {inc.district || "—"}
                             </span>
                           </div>
-                          <span className="text-[10px] font-mono text-fg-dim tabular-nums">
+                          <span className="text-[11px] font-mono text-fg-dim tabular-nums">
                             {inc.occurred_at
                               ? new Date(inc.occurred_at).toLocaleDateString(
                                   lang === "de" ? "de-DE" : "en-US",

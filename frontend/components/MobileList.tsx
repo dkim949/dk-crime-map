@@ -26,7 +26,7 @@ export default function MobileList({
   loading,
 }: MobileListProps) {
   return (
-    <div className="md:hidden h-[35dvh] bg-bg-raised border-t border-border overflow-y-auto">
+    <div className="md:hidden h-[25dvh] bg-bg-raised border-t border-border overflow-y-auto">
       {loading ? (
         <div className="py-6 text-center text-fg-dim text-xs font-mono">
           {t(lang, "loading")}
@@ -69,15 +69,15 @@ export default function MobileList({
                     </p>
                     <div className="flex items-center gap-2">
                       <span
-                        className="text-[9px] font-mono uppercase"
+                        className="text-[11px] font-mono uppercase"
                         style={{ color: group.color }}
                       >
                         {group.label[lang]}
                       </span>
-                      <span className="text-[9px] text-fg-dim">
+                      <span className="text-[11px] text-fg-dim">
                         {inc.district || "—"}
                       </span>
-                      <span className="text-[9px] font-mono text-fg-dim tabular-nums ml-auto">
+                      <span className="text-[11px] font-mono text-fg-dim tabular-nums ml-auto">
                         {inc.occurred_at
                           ? new Date(inc.occurred_at).toLocaleDateString(
                               lang === "de" ? "de-DE" : "en-US",

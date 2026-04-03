@@ -12,8 +12,8 @@ const MARKER_VISIBLE_ZOOM = 13;
 const MARKER_SIZE = 10;
 const CHOROPLETH_FILL = "#4ade80";
 const CHOROPLETH_BORDER = "#1e293b";
-const BIKE_FILL = "#fbbf24";
-const MIN_OPACITY = 0.03;
+const BIKE_FILL = "#38bdf8";
+const MIN_OPACITY = 0.1;
 const MAX_OPACITY = 0.45;
 
 interface GeoJsonCollection {
@@ -216,7 +216,7 @@ export default function CrimeMap({
         return {
           fillColor: BIKE_FILL,
           fillOpacity: count > 0 ? computeOpacity(count, maxCount) : 0,
-          color: count > 0 ? "#fbbf2433" : "transparent",
+          color: count > 0 ? "#38bdf833" : "transparent",
           weight: count > 0 ? 1 : 0,
         };
       },
@@ -227,14 +227,14 @@ export default function CrimeMap({
         if (count === 0) return;
 
         layer.bindTooltip(
-          `<div style="font-family:var(--font-mono),monospace;font-size:12px;padding:6px 10px;background:#12121aee;color:#e4e4e7;border:1px solid #fbbf2444;">
-            <span style="font-weight:700;color:#fbbf24">${name}</span>
+          `<div style="font-family:var(--font-mono),monospace;font-size:12px;padding:6px 10px;background:#12121aee;color:#e4e4e7;border:1px solid #38bdf844;">
+            <span style="font-weight:700;color:#38bdf8">${name}</span>
             <span style="color:#9ca3af;margin-left:6px">${count} thefts</span>
           </div>`,
           { sticky: true, direction: "top", offset: [0, -10], className: "choropleth-tooltip" },
         );
         layer.on("mouseover", () => {
-          (layer as L.Path).setStyle({ weight: 2, color: "#fbbf2466", fillOpacity: Math.min(computeOpacity(count, maxCount) + 0.15, 0.75) });
+          (layer as L.Path).setStyle({ weight: 2, color: "#38bdf866", fillOpacity: Math.min(computeOpacity(count, maxCount) + 0.15, 0.75) });
         });
         layer.on("mouseout", () => bikeLayer.resetStyle(layer));
       },
@@ -284,6 +284,11 @@ export default function CrimeMap({
         .choropleth-tooltip::before { display:none!important; }
       `}</style>
       <div ref={containerRef} className="w-full h-full" />
+      {!markersVisible && (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-bg-raised/80 border border-border px-3 py-1.5 text-[11px] font-mono text-fg-dim pointer-events-none">
+          {lang === "de" ? "Reinzoomen für Details" : "Zoom in for details"}
+        </div>
+      )}
     </>
   );
 }

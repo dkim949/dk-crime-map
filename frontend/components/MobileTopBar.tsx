@@ -50,11 +50,11 @@ export default function MobileTopBar({
           <h1 className="text-xs font-bold tracking-tight uppercase text-accent">
             Berlin Crime Map
           </h1>
-          <span className="text-[10px] text-fg-dim font-mono tabular-nums">
+          <span className="text-[11px] text-fg-dim font-mono tabular-nums">
             {incidentCount}
           </span>
         </div>
-        <div className="flex text-[10px] font-mono">
+        <div className="flex text-[11px] font-mono">
           <button
             onClick={() => onLangChange("de")}
             className={`px-2 py-0.5 border border-border ${
@@ -81,7 +81,7 @@ export default function MobileTopBar({
           <button
             key={label}
             onClick={() => onDatePresetChange(days)}
-            className={`shrink-0 px-2.5 py-1 text-[10px] font-mono border border-border rounded-full transition-colors ${
+            className={`shrink-0 px-2.5 py-1 text-[11px] font-mono border border-border rounded-full transition-colors ${
               datePreset === days
                 ? "bg-accent text-bg border-accent"
                 : "text-fg-dim"
@@ -92,7 +92,7 @@ export default function MobileTopBar({
         ))}
         <button
           onClick={() => onDatePresetChange(0)}
-          className={`shrink-0 px-2.5 py-1 text-[10px] font-mono border border-border rounded-full transition-colors ${
+          className={`shrink-0 px-2.5 py-1 text-[11px] font-mono border border-border rounded-full transition-colors ${
             datePreset === 0
               ? "bg-accent text-bg border-accent"
               : "text-fg-dim"
@@ -106,7 +106,7 @@ export default function MobileTopBar({
         {/* Bike layer */}
         <button
           onClick={onToggleBikeLayer}
-          className={`shrink-0 px-2.5 py-1 text-[10px] font-mono border rounded-full transition-colors ${
+          className={`shrink-0 px-2.5 py-1 text-[11px] font-mono border rounded-full transition-colors ${
             showBikeLayer ? "border-[#fbbf24] text-[#fbbf24]" : "border-border text-fg-dim"
           }`}
         >
@@ -122,7 +122,7 @@ export default function MobileTopBar({
             <button
               key={key}
               onClick={() => onToggleGroup(key)}
-              className={`shrink-0 flex items-center gap-1 px-2 py-1 text-[10px] font-mono border rounded-full transition-colors ${
+              className={`shrink-0 flex items-center gap-1 px-2 py-1 text-[11px] font-mono border rounded-full transition-colors ${
                 selected ? "border-current" : "border-border text-fg-dim"
               }`}
               style={selected ? { borderColor: color, color } : {}}
