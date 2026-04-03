@@ -8,7 +8,7 @@ import { CATEGORY_GROUPS, getCategoryGroup, getCategoryColor } from "@/types/inc
 
 const BERLIN_CENTER: [number, number] = [52.52, 13.405];
 const DEFAULT_ZOOM = 11;
-const MARKER_VISIBLE_ZOOM = 13;
+const MARKER_VISIBLE_ZOOM = 12;
 const MARKER_SIZE = 10;
 const CHOROPLETH_BORDER = "#1e293b";
 const CHOROPLETH_OPACITY = 0.5;
