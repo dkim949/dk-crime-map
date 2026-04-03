@@ -63,7 +63,18 @@ def geocode(address: str, api_key: str, delay: float = 0.05) -> Optional[tuple[f
         data = resp.json()
 
         if data["status"] == "OK" and data["results"]:
-            loc = data["results"][0]["geometry"]["location"]
+            result = data["results"][0]
+            result_types = set(result.get("types", []))
+            # Reject coarse results (city/district level) — too imprecise for map markers
+            _coarse = {"locality", "sublocality", "administrative_area_level_1",
+                       "administrative_area_level_2", "administrative_area_level_3",
+                       "country", "political", "colloquial_area"}
+            _precise = {"street_address", "premise", "subpremise", "route",
+                        "intersection", "point_of_interest", "establishment", "natural_feature"}
+            if result_types & _coarse and not result_types & _precise:
+                log.warning(f"Geocode too coarse [{result_types}]: {address}")
+                return None
+            loc = result["geometry"]["location"]
             coords = (loc["lat"], loc["lng"])
             _cache[key] = coords
             log.debug(f"Geocoded: {address} → {coords}")
