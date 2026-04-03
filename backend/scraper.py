@@ -78,10 +78,38 @@ class Incident:
     lng: Optional[float] = None
 
 
+# RSS 피드 URL
+RSS_URL = f"{BASE}/polizei/polizeimeldungen/index.php/rss"
+
+
 # ── 1. URL 수집 ──────────────────────────────────────────────────────────────
 
+def fetch_rss_urls() -> list[str]:
+    """RSS 피드에서 최신 pressemitteilung URL 수집.
+
+    Returns:
+        URL 리스트. 실패 시 빈 리스트.
+    """
+    try:
+        r = requests.get(RSS_URL, headers=HEADERS, timeout=20)
+        r.raise_for_status()
+        root = ET.fromstring(r.content)
+
+        urls: list[str] = []
+        for item in root.findall(".//item"):
+            link = item.findtext("link", "")
+            if link and "pressemitteilung" in link:
+                urls.append(link.strip())
+
+        log.info(f"RSS에서 {len(urls)}개 URL 수집 완료")
+        return urls
+    except Exception as e:
+        log.warning(f"RSS fetch failed: {e}")
+        return []
+
+
 def fetch_sitemap_urls(year: int = 2026) -> list[str]:
-    """Archive 페이지에서 polizeimeldungen URL 수집. 실패 시 sitemap fallback.
+    """URL 수집: RSS → archive → sitemap → ID scan 순서로 fallback.
 
     Args:
         year: 수집 대상 연도.
@@ -89,19 +117,25 @@ def fetch_sitemap_urls(year: int = 2026) -> list[str]:
     Returns:
         pressemitteilung URL 리스트.
     """
-    # 1차: archive 페이지
+    # 1차: RSS 피드 (가장 빠르고 안정적)
+    urls = fetch_rss_urls()
+    if urls:
+        return urls
+
+    # 2차: archive 페이지
+    log.warning("RSS 수집 실패. Archive fallback 시도.")
     urls = _fetch_archive_urls(year)
     if urls:
         log.info(f"Archive에서 {len(urls)}개 URL 수집 완료 ({year})")
         return urls
 
-    # 2차: sitemap fallback
+    # 3차: sitemap fallback
     log.warning("Archive 수집 실패. Sitemap fallback 시도.")
     urls = _fetch_sitemap_urls_fallback(year)
     if urls:
         return urls
 
-    # 3차: ID range scan (최후 수단)
+    # 4차: ID range scan (최후 수단)
     log.warning("Sitemap도 실패. ID range scan fallback.")
     return _id_range_scan(year)
 
