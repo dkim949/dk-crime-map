@@ -136,6 +136,16 @@ def run(year: int | None = None, max_articles: int = 100) -> None:
     log.info("=== Step 4: Storage ===")
     upsert_incidents(incidents, client=db_client)
 
+    # 5. 자전거 도난 데이터 수집
+    log.info("=== Step 5: Bike Thefts ===")
+    try:
+        from bike_theft import fetch_bike_thefts, upsert_bike_thefts
+        bike_rows = fetch_bike_thefts(days_back=7)
+        if bike_rows:
+            upsert_bike_thefts(bike_rows, client=db_client)
+    except Exception as e:
+        log.warning(f"Bike theft collection failed (non-fatal): {e}")
+
     log.info("=== Pipeline complete ===")
 
 

@@ -33,3 +33,11 @@ export async function fetchStats(): Promise<{ data: DistrictStat[] }> {
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
+
+export async function fetchBikeTheftsByLor(): Promise<{ data: Record<string, number> }> {
+  const res = await fetch(`${API_BASE}/bike-thefts/by-lor`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}

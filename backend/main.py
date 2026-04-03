@@ -138,6 +138,47 @@ def get_stats():
     return {"data": result.data}
 
 
+# ── 자전거 도난 ──────────────────────────────────────────────
+
+@app.get("/bike-thefts")
+def get_bike_thefts(
+    district: Optional[str] = None,
+    limit: int = 500,
+    offset: int = 0,
+):
+    """자전거 도난 데이터 (LOR 기반 집계용)."""
+    db = get_client()
+    query = (
+        db.table("bike_thefts")
+        .select("lor_code, district, occurred_at, damage_eur, bike_type")
+        .eq("is_active", True)
+        .order("occurred_at", desc=True)
+        .limit(min(limit, 2000))
+        .offset(offset)
+    )
+    if district:
+        query = query.eq("district", district)
+    result = query.execute()
+    return {"data": result.data, "count": len(result.data)}
+
+
+@app.get("/bike-thefts/by-lor")
+def get_bike_thefts_by_lor():
+    """LOR 코드별 자전거 도난 건수 집계."""
+    db = get_client()
+    result = (
+        db.table("bike_thefts")
+        .select("lor_code, district")
+        .eq("is_active", True)
+        .execute()
+    )
+    counts: dict[str, int] = {}
+    for row in (result.data or []):
+        lor = row.get("lor_code", "")
+        counts[lor] = counts.get(lor, 0) + 1
+    return {"data": counts}
+
+
 # ── 앱 설정 ───────────────────────────────────────────────────
 
 @app.get("/config")
