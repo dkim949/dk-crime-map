@@ -10,10 +10,10 @@ const BERLIN_CENTER: [number, number] = [52.52, 13.405];
 const DEFAULT_ZOOM = 11;
 const MARKER_VISIBLE_ZOOM = 13;
 const MARKER_SIZE = 10;
-const CHOROPLETH_FILL = "#22d3ee";
 const CHOROPLETH_BORDER = "#1e293b";
-const MIN_OPACITY = 0.1;
-const MAX_OPACITY = 0.45;
+const CHOROPLETH_OPACITY = 0.5;
+// Green(safe) → Yellow → Orange → Red(danger)
+const COLOR_SCALE = ["#22c55e", "#84cc16", "#eab308", "#f97316", "#ef4444"];
 
 interface GeoJsonCollection {
   type: "FeatureCollection";
@@ -68,11 +68,11 @@ function matchDistrictName(geoName: string, districtCounts: Record<string, numbe
   return 0;
 }
 
-function computeOpacity(count: number, maxCount: number, cap: number = MAX_OPACITY): number {
-  if (maxCount === 0) return MIN_OPACITY;
-  // Log scale to prevent single incidents from dominating
+function getHeatColor(count: number, maxCount: number): string {
+  if (maxCount === 0 || count === 0) return COLOR_SCALE[0];
   const ratio = Math.log(count + 1) / Math.log(maxCount + 1);
-  return MIN_OPACITY + ratio * (cap - MIN_OPACITY);
+  const idx = Math.min(Math.floor(ratio * COLOR_SCALE.length), COLOR_SCALE.length - 1);
+  return COLOR_SCALE[idx];
 }
 
 function getTitle(inc: Incident, lang: "de" | "en"): string {
@@ -146,9 +146,10 @@ export default function CrimeMap({
       style: (feature) => {
         const name = feature?.properties?.name || "";
         const count = matchDistrictName(name, districtCounts);
+        const color = getHeatColor(count, maxCount);
         return {
-          fillColor: CHOROPLETH_FILL,
-          fillOpacity: computeOpacity(count, maxCount),
+          fillColor: color,
+          fillOpacity: count > 0 ? CHOROPLETH_OPACITY : 0.05,
           color: CHOROPLETH_BORDER,
           weight: 1,
           opacity: 0.6,
@@ -157,15 +158,16 @@ export default function CrimeMap({
       onEachFeature: (feature, layer) => {
         const name = feature.properties?.name || "";
         const count = matchDistrictName(name, districtCounts);
+        const heatColor = getHeatColor(count, maxCount);
         layer.bindTooltip(
-          `<div style="font-family:var(--font-mono),monospace;font-size:12px;padding:6px 10px;background:#12121aee;color:#e4e4e7;border:1px solid #22d3ee44;">
-            <span style="font-weight:700;color:#22d3ee">${name}</span>
+          `<div style="font-family:var(--font-mono),monospace;font-size:12px;padding:6px 10px;background:#12121aee;color:#e4e4e7;border:1px solid ${heatColor}44;">
+            <span style="font-weight:700;color:${heatColor}">${name}</span>
             <span style="color:#9ca3af;margin-left:6px">${count}</span>
           </div>`,
           { sticky: true, direction: "top", offset: [0, -10], className: "choropleth-tooltip" },
         );
         layer.on("mouseover", () => {
-          (layer as L.Path).setStyle({ weight: 2, color: "#22d3ee66", fillOpacity: Math.min(computeOpacity(count, maxCount) + 0.15, 0.75) });
+          (layer as L.Path).setStyle({ weight: 2, color: `${heatColor}88`, fillOpacity: Math.min(CHOROPLETH_OPACITY + 0.15, 0.7) });
         });
         layer.on("mouseout", () => choropleth.resetStyle(layer));
       },
@@ -186,7 +188,7 @@ export default function CrimeMap({
       L.marker(center, {
         icon: L.divIcon({
           className: "",
-          html: `<div style="font-family:var(--font-mono),monospace;font-size:13px;font-weight:700;color:#22d3ee;text-shadow:0 0 8px #0a0a0f,0 0 4px #0a0a0f;text-align:center;white-space:nowrap">${count}</div>`,
+          html: `<div style="font-family:var(--font-mono),monospace;font-size:13px;font-weight:700;color:#e4e4e7;text-shadow:0 0 8px #0a0a0f,0 0 4px #0a0a0f;text-align:center;white-space:nowrap">${count}</div>`,
           iconSize: [40, 20],
           iconAnchor: [20, 10],
         }),
