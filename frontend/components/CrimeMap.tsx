@@ -123,8 +123,11 @@ export default function CrimeMap({
   useEffect(() => {
     if (!showBikeLayer) return;
     fetchBikeTheftsByLor()
-      .then((r) => setBikeCounts(r.data))
-      .catch((e) => console.error("Failed to load bike thefts:", e));
+      .then((r) => {
+        console.log("[BikeLayer] API data:", Object.keys(r.data).length, "LOR codes");
+        setBikeCounts(r.data);
+      })
+      .catch((e) => console.error("[BikeLayer] API error:", e));
   }, [showBikeLayer]);
 
   const handleZoom = useCallback(() => {
@@ -197,9 +200,13 @@ export default function CrimeMap({
   useEffect(() => {
     if (!mapRef.current) return;
     if (bikeLayerRef.current) { bikeLayerRef.current.remove(); bikeLayerRef.current = null; }
-    if (!showBikeLayer || !lorGeoData || Object.keys(bikeCounts).length === 0) return;
+    if (!showBikeLayer || !lorGeoData || Object.keys(bikeCounts).length === 0) {
+      console.log("[BikeLayer] Skip render:", { showBikeLayer, lorGeoLoaded: !!lorGeoData, bikeCountsLen: Object.keys(bikeCounts).length });
+      return;
+    }
 
     const maxCount = Math.max(...Object.values(bikeCounts), 1);
+    console.log("[BikeLayer] Rendering:", Object.keys(bikeCounts).length, "LORs, maxCount:", maxCount);
 
     const bikeLayer = L.geoJSON(lorGeoData as GeoJSON.FeatureCollection, {
       style: (feature) => {
