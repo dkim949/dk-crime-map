@@ -105,9 +105,15 @@ def run(year: int | None = None, max_articles: int = 100) -> None:
     else:
         log.info("No AI provider configured. Translation will be skipped.")
 
-    # 1. 스크래핑
+    # 0. 기존 URL 조회 (중복 크롤링 방지)
+    log.info("=== Step 0: Fetching existing URLs ===")
+    existing = db_client.table("incidents").select("source_url").execute()
+    existing_urls = {r["source_url"] for r in (existing.data or []) if r.get("source_url")}
+    log.info(f"Found {len(existing_urls)} existing URLs in DB")
+
+    # 1. 스크래핑 (새 URL만)
     log.info("=== Step 1: Scraping ===")
-    incidents = scrape_batch(year=year, max_articles=max_articles)
+    incidents = scrape_batch(year=year, max_articles=max_articles, existing_urls=existing_urls)
 
     # 2. 지오코딩
     log.info("=== Step 2: Geocoding ===")

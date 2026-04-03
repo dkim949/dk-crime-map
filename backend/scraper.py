@@ -431,13 +431,19 @@ def parse_incident(url: str, session: requests.Session, delay: float = 1.0) -> O
 
 # ── 3. 배치 실행 ─────────────────────────────────────────────────────────────
 
-def scrape_batch(year: int = 2026, max_articles: int = 50, delay: float = 1.5) -> list[Incident]:
+def scrape_batch(
+    year: int = 2026,
+    max_articles: int = 50,
+    delay: float = 1.5,
+    existing_urls: set[str] | None = None,
+) -> list[Incident]:
     """배치 스크래핑 메인 함수.
 
     Args:
         year: 대상 연도.
         max_articles: 최대 수집 기사 수.
         delay: 기사 간 요청 대기 시간(초).
+        existing_urls: DB에 이미 있는 source_url 집합. 있으면 스킵.
 
     Returns:
         Incident 리스트.
@@ -445,6 +451,12 @@ def scrape_batch(year: int = 2026, max_articles: int = 50, delay: float = 1.5) -
     log.info(f"Fetching URL list for {year}...")
     urls = fetch_sitemap_urls(year)
     log.info(f"Found {len(urls)} candidate URLs")
+
+    # 이미 DB에 있는 URL 스킵
+    if existing_urls:
+        new_urls = [u for u in urls if u not in existing_urls]
+        log.info(f"Skipping {len(urls) - len(new_urls)} already-stored URLs, {len(new_urls)} new")
+        urls = new_urls
 
     session = requests.Session()
     session.headers.update(HEADERS)
