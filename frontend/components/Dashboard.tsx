@@ -53,26 +53,27 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async (retry = 0) => {
-    setLoading(true);
-    setError(null);
+    if (retry === 0) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const result = await fetchIncidents({
         district: district || undefined,
         limit: 500,
       });
-      if (result.data.length === 0 && retry < 2) {
-        // Render cold start: 빈 응답 시 재시도
-        setTimeout(() => load(retry + 1), 3000);
+      if (result.data.length === 0 && retry < 3) {
+        setTimeout(() => load(retry + 1), 5000);
         return;
       }
       setAllIncidents(result.data);
+      setLoading(false);
     } catch (e) {
-      if (retry < 2) {
-        setTimeout(() => load(retry + 1), 3000);
+      if (retry < 3) {
+        setTimeout(() => load(retry + 1), 5000);
         return;
       }
       setError(e instanceof Error ? e.message : "Failed to load data");
-    } finally {
       setLoading(false);
     }
   }, [district]);
