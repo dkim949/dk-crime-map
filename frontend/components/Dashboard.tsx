@@ -43,6 +43,7 @@ export default function Dashboard() {
   const [showReportSheet, setShowReportSheet] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [reportSuccess, setReportSuccess] = useState(false);
+  const [geoError, setGeoError] = useState(false);
 
   // html lang + URL params sync
   useEffect(() => {
@@ -119,6 +120,34 @@ export default function Dashboard() {
   }, [allIncidents, bikeIncidents, datePreset, activeGroups]);
 
   const handleSelect = useCallback((id: string) => setSelectedId(id), []);
+
+  const handleStartReport = useCallback(() => {
+    if (reportMode) {
+      // 이미 모드 켜져있으면 취소
+      setReportMode(false);
+      setReportPin(null);
+      setGeoError(false);
+      return;
+    }
+    if (!navigator.geolocation) {
+      setGeoError(true);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setUserLocation({ lat: coords.latitude, lng: coords.longitude });
+        setReportPin({ lat: coords.latitude, lng: coords.longitude });
+        setReportMode(true);
+        setGeoError(false);
+        setShowReportSheet(true);
+      },
+      () => {
+        setGeoError(true);
+        setTimeout(() => setGeoError(false), 4000);
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  }, [reportMode]);
 
   const handleReportPin = useCallback((lat: number, lng: number) => {
     setReportPin({ lat, lng });
@@ -210,7 +239,7 @@ export default function Dashboard() {
         {/* Report FAB */}
         {!showReportSheet && (
           <button
-            onClick={() => { setReportMode(!reportMode); setReportPin(null); }}
+            onClick={handleStartReport}
             className={`
               absolute bottom-4 right-4 z-[1000] px-3 py-2
               text-[11px] font-mono uppercase tracking-widest border
@@ -223,6 +252,15 @@ export default function Dashboard() {
           >
             {reportMode ? "✕ " : "+ "}{t(lang, "reportBtn")}
           </button>
+        )}
+
+        {/* GPS denied error */}
+        {geoError && (
+          <div className="absolute bottom-16 right-4 z-[1001] bg-bg-raised border border-red-500/50 px-3 py-2 text-[11px] font-mono text-red-400 max-w-[220px] text-right">
+            {lang === "de"
+              ? "Standortzugriff erforderlich. Bitte in den Browser-Einstellungen erlauben."
+              : "Location access required. Please allow it in browser settings."}
+          </div>
         )}
 
         {/* Report mode hint */}
