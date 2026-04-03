@@ -154,10 +154,11 @@ export default function CrimeMap({
     return () => { map.off("zoomend", handleZoom); map.remove(); mapRef.current = null; };
   }, [handleZoom]);
 
-  // Crime choropleth (Bezirk level)
+  // Crime choropleth (Bezirk level) — bike layer ON이면 숨김
   useEffect(() => {
     if (!mapRef.current || !geoData) return;
     if (choroplethRef.current) { choroplethRef.current.remove(); choroplethRef.current = null; }
+    if (showBikeLayer) return; // bike layer가 켜져있으면 crime choropleth 안 그림
 
     const districtCounts = countByDistrict(incidents);
     const maxCount = Math.max(...Object.values(districtCounts), 1);
@@ -194,7 +195,7 @@ export default function CrimeMap({
     choropleth.bringToBack();
     choroplethRef.current = choropleth;
     return () => { if (choroplethRef.current) { choroplethRef.current.remove(); choroplethRef.current = null; } };
-  }, [geoData, incidents]);
+  }, [geoData, incidents, showBikeLayer]);
 
   // Bike theft choropleth (LOR Planungsraum level)
   useEffect(() => {
