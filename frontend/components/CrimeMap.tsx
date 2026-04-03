@@ -14,7 +14,7 @@ const CHOROPLETH_FILL = "#4ade80";
 const CHOROPLETH_BORDER = "#1e293b";
 const BIKE_FILL = "#fbbf24";
 const MIN_OPACITY = 0.03;
-const MAX_OPACITY = 0.6;
+const MAX_OPACITY = 0.45;
 
 interface GeoJsonCollection {
   type: "FeatureCollection";
@@ -69,9 +69,11 @@ function matchDistrictName(geoName: string, districtCounts: Record<string, numbe
   return 0;
 }
 
-function computeOpacity(count: number, maxCount: number): number {
+function computeOpacity(count: number, maxCount: number, cap: number = MAX_OPACITY): number {
   if (maxCount === 0) return MIN_OPACITY;
-  return MIN_OPACITY + (count / maxCount) * (MAX_OPACITY - MIN_OPACITY);
+  // Log scale to prevent single incidents from dominating
+  const ratio = Math.log(count + 1) / Math.log(maxCount + 1);
+  return MIN_OPACITY + ratio * (cap - MIN_OPACITY);
 }
 
 function getTitle(inc: Incident, lang: "de" | "en"): string {
@@ -230,7 +232,8 @@ export default function CrimeMap({
       },
     });
     bikeLayer.addTo(mapRef.current);
-    bikeLayer.bringToBack();
+    // Bike layer on top of crime choropleth, but behind markers
+    if (choroplethRef.current) choroplethRef.current.bringToBack();
     bikeLayerRef.current = bikeLayer;
     return () => { if (bikeLayerRef.current) { bikeLayerRef.current.remove(); bikeLayerRef.current = null; } };
   }, [lorGeoData, bikeCounts, showBikeLayer]);
