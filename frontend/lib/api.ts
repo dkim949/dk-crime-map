@@ -99,8 +99,9 @@ export async function submitReport(payload: {
     body: JSON.stringify(payload),
   });
   if (res.status === 429) throw new Error("rateLimit");
-  if (res.status === 422) throw new Error("tooFar");
+  if (res.status === 422) throw new Error("validation");
   if (res.status === 403) throw new Error("botCheck");
-  if (!res.ok) throw new Error("submitError");
+  if (res.status === 503) throw new Error("disabled");
+  if (!res.ok) throw new Error(`submitError:${res.status}`);
   return res.json();
 }

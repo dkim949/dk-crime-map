@@ -262,30 +262,28 @@ export default function Dashboard() {
 
         {/* Step 1: 위치 선택 바 */}
         {reportMode && !showReportSheet && (
-          <div className="absolute bottom-0 inset-x-0 z-[1000] bg-bg-raised border-t border-accent/50 px-4 pt-3 pb-4">
-            <p className="text-[11px] font-mono text-accent mb-0.5">
-              📍 {reportPin ? `${reportPin.lat.toFixed(4)}, ${reportPin.lng.toFixed(4)}` : "..."}
-            </p>
-            <p className="text-[10px] font-mono text-fg-dim mb-3">
-              {lang === "de"
-                ? "Karte tippen oder Pin ziehen, um Position anzupassen"
-                : "Tap map or drag pin to adjust location"}
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={handleReportClose}
-                className="flex-1 py-2 border border-border text-xs font-mono text-fg-dim hover:text-fg transition-colors"
-              >
-                {t(lang, "reportCancel")}
-              </button>
-              <button
-                onClick={handleConfirmLocation}
-                disabled={!reportPin}
-                className="flex-1 py-2 bg-accent text-bg border border-accent text-xs font-mono hover:opacity-90 disabled:opacity-50 transition-opacity"
-              >
-                {lang === "de" ? "Ort bestätigen →" : "Confirm location →"}
-              </button>
+          <div className="absolute bottom-0 inset-x-0 z-[1000] bg-bg-raised border-t border-accent/50 px-4 py-2.5 flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-mono text-accent leading-tight">
+                📍 {reportPin ? `${reportPin.lat.toFixed(4)}, ${reportPin.lng.toFixed(4)}` : "..."}
+              </p>
+              <p className="text-[10px] font-mono text-fg-dim leading-tight mt-0.5">
+                {lang === "de" ? "Tippen oder ziehen" : "Tap or drag to adjust"}
+              </p>
             </div>
+            <button
+              onClick={handleReportClose}
+              className="px-3 py-1.5 border border-border text-xs font-mono text-fg-dim hover:text-fg transition-colors shrink-0"
+            >
+              {t(lang, "reportCancel")}
+            </button>
+            <button
+              onClick={handleConfirmLocation}
+              disabled={!reportPin}
+              className="px-3 py-1.5 bg-accent text-bg border border-accent text-xs font-mono hover:opacity-90 disabled:opacity-50 transition-opacity shrink-0"
+            >
+              {lang === "de" ? "Weiter →" : "Next →"}
+            </button>
           </div>
         )}
 

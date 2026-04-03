@@ -106,7 +106,8 @@ export default function ReportSheet({
       onSuccess();
     } catch (e: any) {
       if (e.message === "rateLimit") setError(t(lang, "reportRateLimit"));
-      else if (e.message === "tooFar") setError(t(lang, "reportTooFar"));
+      else if (e.message === "disabled") setError(lang === "de" ? "Meldungen sind derzeit deaktiviert." : "Reporting is currently disabled.");
+      else if (e.message?.startsWith("submitError:")) setError(`${t(lang, "reportError")} (${e.message.split(":")[1]})`);
       else setError(t(lang, "reportError"));
     } finally {
       setSubmitting(false);
