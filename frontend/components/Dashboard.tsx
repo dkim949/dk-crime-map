@@ -3,9 +3,12 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import dynamic from "next/dynamic";
 import Sidebar from "./Sidebar";
+import MobileTopBar from "./MobileTopBar";
+import MobileList from "./MobileList";
 import { fetchIncidents } from "@/lib/api";
 import type { Incident } from "@/types/incident";
 import { CATEGORY_GROUPS } from "@/types/incident";
+import type { Lang } from "@/lib/i18n";
 
 const CrimeMap = dynamic(() => import("./CrimeMap"), { ssr: false });
 
@@ -15,7 +18,7 @@ export default function Dashboard() {
   const [activeGroups, setActiveGroups] = useState<string[]>([]);
   const [district, setDistrict] = useState("");
   const [datePreset, setDatePreset] = useState(0);
-  const [lang, setLang] = useState<"de" | "en">("de");
+  const [lang, setLang] = useState<Lang>("de");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,7 +42,6 @@ export default function Dashboard() {
     load();
   }, [load]);
 
-  // Client-side filtering: date + category groups
   const incidents = useMemo(() => {
     let filtered = allIncidents;
 
@@ -75,9 +77,11 @@ export default function Dashboard() {
     );
   }, []);
 
+  const clearGroups = useCallback(() => setActiveGroups([]), []);
+
   if (error) {
     return (
-      <div className="min-h-[100dvh] flex items-center justify-center bg-bg">
+      <div className="h-[100dvh] flex items-center justify-center bg-bg">
         <div className="text-center space-y-3">
           <p className="text-accent font-mono text-sm uppercase tracking-widest">
             {error}
@@ -94,23 +98,40 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex h-[100dvh] max-md:flex-col-reverse">
-      <Sidebar
-        incidents={incidents}
-        selectedId={selectedId}
-        onSelect={handleSelect}
+    <div className="flex h-[100dvh] md:flex-row max-md:flex-col">
+      {/* Desktop sidebar */}
+      <div className="hidden md:flex">
+        <Sidebar
+          incidents={incidents}
+          selectedId={selectedId}
+          onSelect={handleSelect}
+          activeGroups={activeGroups}
+          onToggleGroup={toggleGroup}
+          onClearGroups={clearGroups}
+          district={district}
+          datePreset={datePreset}
+          lang={lang}
+          onDistrictChange={setDistrict}
+          onDatePresetChange={setDatePreset}
+          onLangChange={setLang}
+          loading={loading}
+        />
+      </div>
+
+      {/* Mobile top bar */}
+      <MobileTopBar
+        incidentCount={incidents.length}
         activeGroups={activeGroups}
         onToggleGroup={toggleGroup}
-        onClearGroups={() => setActiveGroups([])}
-        district={district}
+        onClearGroups={clearGroups}
         datePreset={datePreset}
-        lang={lang}
-        onDistrictChange={setDistrict}
         onDatePresetChange={setDatePreset}
+        lang={lang}
         onLangChange={setLang}
-        loading={loading}
       />
-      <main className="flex-1 relative">
+
+      {/* Map */}
+      <main className="flex-1 relative min-h-0">
         <CrimeMap
           incidents={incidents}
           selectedId={selectedId}
@@ -118,6 +139,15 @@ export default function Dashboard() {
           lang={lang}
         />
       </main>
+
+      {/* Mobile incident list */}
+      <MobileList
+        incidents={incidents}
+        selectedId={selectedId}
+        onSelect={handleSelect}
+        lang={lang}
+        loading={loading}
+      />
     </div>
   );
 }
