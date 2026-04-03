@@ -53,6 +53,9 @@ interface SidebarProps {
   onDatePresetChange: (days: number) => void;
   onLangChange: (lang: Lang) => void;
   loading: boolean;
+  pendingReportsCount?: number;
+  showPendingReports?: boolean;
+  onTogglePendingReports?: () => void;
 }
 
 export default function Sidebar({
@@ -69,6 +72,9 @@ export default function Sidebar({
   onDatePresetChange,
   onLangChange,
   loading,
+  pendingReportsCount = 0,
+  showPendingReports = false,
+  onTogglePendingReports,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(true);
@@ -246,6 +252,40 @@ export default function Sidebar({
                 </button>
               </div>
             </div>
+
+            {/* User Reports toggle */}
+            {pendingReportsCount > 0 && (
+              <div>
+                <span className="text-[11px] font-mono text-fg-dim uppercase tracking-widest">
+                  {lang === "de" ? "Nutzer-Meldungen" : "User Reports"}
+                </span>
+                <div className="mt-1">
+                  <button
+                    onClick={onTogglePendingReports}
+                    className={`
+                      w-full flex items-center gap-2 py-2 px-3 text-[11px] font-mono border
+                      transition-all duration-150
+                      ${showPendingReports
+                        ? "border-amber-500/70 text-amber-400 bg-amber-500/10"
+                        : "border-border text-fg-dim hover:border-amber-500/40 hover:text-amber-400/70"
+                      }
+                    `}
+                  >
+                    <svg width="10" height="14" viewBox="0 0 24 34" fill="none" className="shrink-0">
+                      <circle cx="12" cy="12" r="11" fill={showPendingReports ? "#f59e0b" : "none"} stroke="#f59e0b" strokeWidth="2"/>
+                      <line x1="9" y1="6" x2="9" y2="18" stroke={showPendingReports ? "white" : "#f59e0b"} strokeWidth="2" strokeLinecap="round"/>
+                      <polygon points="9,6 20,9.5 9,13" fill={showPendingReports ? "white" : "#f59e0b"}/>
+                    </svg>
+                    <span>
+                      {lang === "de" ? `${pendingReportsCount} Meldungen anzeigen` : `Show ${pendingReportsCount} reports`}
+                    </span>
+                    <span className={`ml-auto text-[10px] ${showPendingReports ? "text-amber-400" : "text-fg-dim"}`}>
+                      {showPendingReports ? "ON" : "OFF"}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* District */}
             <label className="block">

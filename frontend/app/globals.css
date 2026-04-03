@@ -90,6 +90,16 @@ body {
   animation: slide-up 0.22s ease-out both;
 }
 
+/* User report flag pulse */
+@keyframes flag-pulse {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(245,158,11,0.7)); transform: scale(1); }
+  50%       { filter: drop-shadow(0 0 10px rgba(245,158,11,1));  transform: scale(1.18); }
+}
+.flag-pulse {
+  animation: flag-pulse 2s ease-in-out infinite;
+  transform-origin: bottom center;
+}
+
 /* Monospace numbers */
 .tabular-nums {
   font-variant-numeric: tabular-nums;

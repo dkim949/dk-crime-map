@@ -47,17 +47,25 @@ function createMarkerIcon(category: string): L.DivIcon {
   });
 }
 
-// 깃발 아이콘 — 유저 신고 전용
-const FLAG_COLOR = "#f59e0b"; // amber
+// 핀 + 깃발 아이콘 — 유저 신고 전용 (흰 원 배경 + 앰버 깃발 + 펄스)
 function createFlagIcon(): L.DivIcon {
   return L.divIcon({
     className: "",
-    iconSize: [14, 20],
-    iconAnchor: [2, 20],
-    html: `<div style="filter:drop-shadow(0 0 4px ${FLAG_COLOR}88)">
-      <svg width="14" height="20" viewBox="0 0 14 20">
-        <line x1="2" y1="0" x2="2" y2="19" stroke="${FLAG_COLOR}" stroke-width="1.5" stroke-linecap="round"/>
-        <polygon points="2,1 13,5 2,10" fill="${FLAG_COLOR}" opacity="0.9"/>
+    iconSize: [24, 34],
+    iconAnchor: [12, 34],
+    html: `<div class="flag-pulse">
+      <svg width="24" height="34" viewBox="0 0 24 34" fill="none">
+        <!-- 핀 원형 헤드 -->
+        <circle cx="12" cy="12" r="11" fill="white" opacity="0.95"/>
+        <circle cx="12" cy="12" r="11" stroke="#f59e0b" stroke-width="1.5"/>
+        <!-- 깃대 -->
+        <line x1="9" y1="6" x2="9" y2="18" stroke="#1e293b" stroke-width="1.5" stroke-linecap="round"/>
+        <!-- 깃발 삼각형 -->
+        <polygon points="9,6 20,9.5 9,13" fill="#f59e0b"/>
+        <!-- 핀 꼬리 -->
+        <line x1="12" y1="23" x2="12" y2="33" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"/>
+        <line x1="9" y1="22" x2="12" y2="33" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="15" y1="22" x2="12" y2="33" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"/>
       </svg>
     </div>`,
   });
