@@ -232,7 +232,7 @@ REPORT_TTL_HOURS = 72  # 미검증 신고는 72시간 후 지도에서 숨김
 
 class ReportPayload(BaseModel):
     address_raw:     str = Field(..., min_length=2, max_length=200)
-    category:        str = Field(..., pattern="^(theft|assault|shooting|fraud|drugs|traffic|fire|missing|homicide|other)$")
+    category:        str = Field(..., pattern="^(theft|assault|shooting|fraud|drugs|traffic|fire|missing|homicide|nuisance|other)$")
     reporter_note:   str = Field("", max_length=200)
     lat:             Optional[float] = Field(None, ge=52.3, le=52.7)
     lng:             Optional[float] = Field(None, ge=13.1, le=13.8)

@@ -5,12 +5,12 @@ import { t, type Lang } from "@/lib/i18n";
 import { submitReport } from "@/lib/api";
 
 const REPORT_CATEGORIES = [
-  { key: "assault", labelKey: "reportCatAssault" as const, icon: "⚡" },
-  { key: "theft",   labelKey: "reportCatTheft"   as const, icon: "👜" },
-  { key: "theft",   labelKey: "reportCatBike"    as const, icon: "🚲" },
-  { key: "drugs",   labelKey: "reportCatDrugs"   as const, icon: "💊" },
-  { key: "fire",    labelKey: "reportCatFire"    as const, icon: "🔥" },
-  { key: "other",   labelKey: "reportCatOther"   as const, icon: "•••" },
+  { key: "assault",  labelKey: "reportCatAssault"  as const, icon: "⚡" },
+  { key: "theft",    labelKey: "reportCatTheft"    as const, icon: "🔒" },
+  { key: "drugs",    labelKey: "reportCatDrugs"    as const, icon: "💊" },
+  { key: "fire",     labelKey: "reportCatFire"     as const, icon: "🔥" },
+  { key: "nuisance", labelKey: "reportCatNuisance" as const, icon: "💩" },
+  { key: "other",    labelKey: "reportCatOther"    as const, icon: "•••" },
 ] as const;
 
 interface ReportSheetProps {

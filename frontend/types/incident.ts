@@ -49,7 +49,7 @@ export const CATEGORY_GROUPS: Record<string, CategoryGroup> = {
     label: { de: "Sonstiges", en: "Other" },
     color: "#94a3b8",
     shape: "square",
-    sources: ["traffic", "drugs", "fire", "missing", "other"],
+    sources: ["traffic", "drugs", "fire", "missing", "nuisance", "other"],
   },
 };
 
