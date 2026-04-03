@@ -19,6 +19,7 @@ export default function Dashboard() {
   const [district, setDistrict] = useState("");
   const [datePreset, setDatePreset] = useState(0);
   const [lang, setLang] = useState<Lang>("de");
+  const [showBikeLayer, setShowBikeLayer] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -114,6 +115,8 @@ export default function Dashboard() {
           onDistrictChange={setDistrict}
           onDatePresetChange={setDatePreset}
           onLangChange={setLang}
+          showBikeLayer={showBikeLayer}
+          onToggleBikeLayer={() => setShowBikeLayer((v) => !v)}
           loading={loading}
         />
       </div>
@@ -128,6 +131,8 @@ export default function Dashboard() {
         onDatePresetChange={setDatePreset}
         lang={lang}
         onLangChange={setLang}
+        showBikeLayer={showBikeLayer}
+        onToggleBikeLayer={() => setShowBikeLayer((v) => !v)}
       />
 
       {/* Map */}
@@ -137,6 +142,7 @@ export default function Dashboard() {
           selectedId={selectedId}
           onSelect={handleSelect}
           lang={lang}
+          showBikeLayer={showBikeLayer}
         />
       </main>
 

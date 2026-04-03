@@ -26,6 +26,8 @@ interface MobileTopBarProps {
   onDatePresetChange: (days: number) => void;
   lang: Lang;
   onLangChange: (lang: Lang) => void;
+  showBikeLayer: boolean;
+  onToggleBikeLayer: () => void;
 }
 
 export default function MobileTopBar({
@@ -37,6 +39,8 @@ export default function MobileTopBar({
   onDatePresetChange,
   lang,
   onLangChange,
+  showBikeLayer,
+  onToggleBikeLayer,
 }: MobileTopBarProps) {
   return (
     <div className="md:hidden bg-bg-raised border-b border-border">
@@ -95,6 +99,18 @@ export default function MobileTopBar({
           }`}
         >
           {t(lang, "all")}
+        </button>
+
+        <span className="shrink-0 w-px h-4 bg-border mx-0.5" />
+
+        {/* Bike layer */}
+        <button
+          onClick={onToggleBikeLayer}
+          className={`shrink-0 px-2.5 py-1 text-[10px] font-mono border rounded-full transition-colors ${
+            showBikeLayer ? "border-[#fbbf24] text-[#fbbf24]" : "border-border text-fg-dim"
+          }`}
+        >
+          🚲
         </button>
 
         <span className="shrink-0 w-px h-4 bg-border mx-0.5" />

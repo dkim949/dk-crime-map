@@ -53,6 +53,8 @@ interface SidebarProps {
   onDistrictChange: (v: string) => void;
   onDatePresetChange: (days: number) => void;
   onLangChange: (lang: Lang) => void;
+  showBikeLayer: boolean;
+  onToggleBikeLayer: () => void;
   loading: boolean;
 }
 
@@ -69,6 +71,8 @@ export default function Sidebar({
   onDistrictChange,
   onDatePresetChange,
   onLangChange,
+  showBikeLayer,
+  onToggleBikeLayer,
   loading,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
@@ -259,6 +263,20 @@ export default function Sidebar({
                 ))}
               </select>
             </label>
+
+            {/* Bike theft layer toggle */}
+            <button
+              onClick={onToggleBikeLayer}
+              className={`w-full flex items-center justify-between py-2 px-2 text-[10px] font-mono border transition-all duration-150 ${
+                showBikeLayer
+                  ? "border-[#fbbf24] text-[#fbbf24]"
+                  : "border-border text-fg-dim hover:text-fg hover:border-border-bright"
+              }`}
+              style={showBikeLayer ? { background: "#fbbf2412", boxShadow: "0 0 10px #fbbf2420" } : {}}
+            >
+              <span>🚲 {lang === "de" ? "Fahrraddiebstahl" : "Bike Theft"}</span>
+              <span>{showBikeLayer ? "ON" : "OFF"}</span>
+            </button>
             </div>
           </div>
 
