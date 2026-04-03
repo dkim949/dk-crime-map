@@ -117,10 +117,11 @@ def fetch_sitemap_urls(year: int = 2026) -> list[str]:
     Returns:
         pressemitteilung URL 리스트.
     """
-    # 1차: RSS 피드 (가장 빠르고 안정적)
-    urls = fetch_rss_urls()
-    if urls:
-        return urls
+    # 1차: RSS 피드 (가장 빠르고 안정적) — 현재 연도에만 유효
+    if year >= datetime.now().year:
+        urls = fetch_rss_urls()
+        if urls:
+            return urls
 
     # 2차: archive 페이지
     log.warning("RSS 수집 실패. Archive fallback 시도.")

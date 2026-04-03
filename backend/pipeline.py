@@ -9,8 +9,8 @@ Cloud Scheduler / Render cron이 이 파일을 실행.
 
 환경변수:
   SUPABASE_URL, SUPABASE_KEY, MAPS_API_KEY
-  AI_PROVIDER (opencode | openai | anthropic), 기본: 사용 가능한 키 자동 선택
-  OPENCODE_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY
+  AI_PROVIDER (openai | anthropic), 기본: 사용 가능한 키 자동 선택
+  OPENAI_API_KEY, ANTHROPIC_API_KEY
 """
 
 import argparse
@@ -38,16 +38,6 @@ def _get_ai_provider() -> tuple[str, object] | None:
     """사용 가능한 AI provider를 반환. (provider_name, client)"""
     provider = os.environ.get("AI_PROVIDER", "").lower()
 
-    # opencode (OpenAI-compatible)
-    opencode_key = os.environ.get("OPENCODE_API_KEY")
-    if opencode_key and provider in ("", "opencode"):
-        from openai import OpenAI
-        client = OpenAI(
-            api_key=opencode_key,
-            base_url="https://api.open-coder.com/v1",
-        )
-        return ("opencode", client)
-
     # openai
     openai_key = os.environ.get("OPENAI_API_KEY")
     if openai_key and provider in ("", "openai"):
@@ -70,10 +60,10 @@ def translate_title(title_de: str, provider: str, client: object) -> dict[str, s
     prompt = TRANSLATE_PROMPT.format(title=title_de)
 
     try:
-        if provider in ("opencode", "openai"):
+        if provider == "openai":
             from openai import OpenAI
             resp = client.chat.completions.create(  # type: ignore
-                model="gpt-4o-mini" if provider == "openai" else "gpt-4o-mini",
+                model="gpt-4o-mini",
                 max_tokens=200,
                 messages=[{"role": "user", "content": prompt}],
             )
@@ -85,7 +75,13 @@ def translate_title(title_de: str, provider: str, client: object) -> dict[str, s
                 max_tokens=200,
                 messages=[{"role": "user", "content": prompt}],
             )
-            return json.loads(msg.content[0].text)
+            text = msg.content[0].text.strip()
+            # strip markdown code fences if present
+            if text.startswith("```"):
+                text = text.split("```")[1]
+                if text.startswith("json"):
+                    text = text[4:]
+            return json.loads(text.strip())
     except Exception as e:
         log.warning(f"Translation failed ({provider}): {title_de} ({e})")
         return {"en": title_de}
@@ -93,7 +89,7 @@ def translate_title(title_de: str, provider: str, client: object) -> dict[str, s
 
 # ── 메인 파이프라인 ──────────────────────────────────────────────────────────
 
-def run(year: int | None = None, max_articles: int = 100) -> None:
+def run(year: int | None = None, max_articles: int = 100, bike_days: int = 7) -> None:
     if year is None:
         year = datetime.now().year
     maps_key = os.environ["MAPS_API_KEY"]
@@ -123,24 +119,26 @@ def run(year: int | None = None, max_articles: int = 100) -> None:
             if coords:
                 inc.lat, inc.lng = coords
 
-    # 3. 번역
-    if ai:
-        provider_name, client = ai
-        log.info(f"=== Step 3: Translation ({provider_name}) ===")
-        for inc in incidents:
-            if inc.title_de:
-                translations = translate_title(inc.title_de, provider_name, client)
-                inc.title_en = translations.get("en")
-
-    # 4. Supabase 저장
-    log.info("=== Step 4: Storage ===")
+    # 3. 지오코딩 결과 저장 (번역 전에 먼저 저장)
+    log.info("=== Step 3: Storage (pre-translation) ===")
     upsert_incidents(incidents, client=db_client)
 
-    # 5. 자전거 도난 데이터 수집
+    # 4. 번역 후 title_en 업데이트
+    if ai:
+        provider_name, ai_client = ai
+        log.info(f"=== Step 4: Translation + Update ({provider_name}) ===")
+        for inc in incidents:
+            if inc.title_de:
+                translations = translate_title(inc.title_de, provider_name, ai_client)
+                en = translations.get("en")
+                if en and en != inc.title_de:
+                    db_client.table("incidents").update({"title_en": en}).eq("source_url", inc.source_url).execute()
+
+    # 5. 자전거 도난 데이터 수집 (번호 유지)
     log.info("=== Step 5: Bike Thefts ===")
     try:
         from bike_theft import fetch_bike_thefts, upsert_bike_thefts
-        bike_rows = fetch_bike_thefts(days_back=7)
+        bike_rows = fetch_bike_thefts(days_back=bike_days)
         if bike_rows:
             upsert_bike_thefts(bike_rows, client=db_client)
     except Exception as e:
@@ -156,5 +154,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--year", type=int, default=datetime.now().year)
     parser.add_argument("--max", type=int, default=100)
+    parser.add_argument("--bike-days", type=int, default=7, dest="bike_days")
     args = parser.parse_args()
-    run(year=args.year, max_articles=args.max)
+    run(year=args.year, max_articles=args.max, bike_days=args.bike_days)
