@@ -262,11 +262,8 @@ async def submit_report(payload: ReportPayload, request: Request):
     if not _verify_turnstile(payload.turnstile_token):
         raise HTTPException(status_code=403, detail="Bot verification failed.")
 
-    # 제보자 위치 vs 신고 위치 거리 검증 (10km 이내)
-    if (payload.user_lat and payload.user_lng and payload.lat and payload.lng):
-        dist_km = _haversine_km(payload.user_lat, payload.user_lng, payload.lat, payload.lng)
-        if dist_km > 10:
-            raise HTTPException(status_code=422, detail="Reported location is too far from your current location.")
+    # 거리 검증 제거 — GPS 오차로 false reject 발생
+    # 베를린 좌표 범위(lat 52.3~52.7, lng 13.1~13.8)가 이미 위치 검증 역할
 
     db = get_client()
     if not is_report_enabled(db):
