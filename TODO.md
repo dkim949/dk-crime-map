@@ -30,11 +30,13 @@
 - [x] Claude Haiku code-fence stripping in translation pipeline
 - [x] Translation backfill 2045 articles (3-pass due to Supabase row limit)
 - [x] **Phase 1 User Reporting**
-  - [x] POST /reports: IP rate limit 1/hour, Cloudflare Turnstile, 72h TTL, 10km geo validation
-  - [x] GET /reports/pending: non-expired unverified reports
-  - [x] ReportSheet bottom sheet UI (category grid, note, disclaimer, Turnstile)
-  - [x] Map pin placement mode (FAB button + crosshair cursor)
-  - [x] Unverified reports displayed semi-transparently on map
+  - [x] POST /reports: Cloudflare Turnstile, 72h TTL, 10km geo validation
+  - [x] Rate limit: 3/hour per IP, 성공한 신고만 카운트
+  - [x] GPS 필수 요청 — 허용 거부 시 신고 불가, 허용 시 현재 위치에 핀 기본 배치
+  - [x] GET /reports/pending: 미만료 미검증 신고 목록
+  - [x] ReportSheet bottom sheet UI (카테고리 그리드, 설명, 면책조항, Turnstile)
+  - [x] 깃발(🚩) 마커 — 코로플레스/공식 카운트와 완전 분리
+  - [x] "Reports (N)" 토글 버튼 — 끄면 깃발 숨김
 
 ## v1.1 — UX Polish (남은 것)
 - [ ] Marker clustering (leaflet.markercluster) — zoom-out 시 겹침 방지
@@ -42,8 +44,11 @@
 - [ ] Korean language support (KO)
 - [ ] Bottom sheet mobile incident list (현재는 25dvh 고정 영역)
 
-## v1.2 — User Engagement
-- [ ] **Phase 2 Reporting**: 다수 신고 시 verified 승격, 관리자 moderaton UI
+## v1.2 — User Engagement (Phase 2 Reporting)
+- [ ] **Clustering/Voting**: 반경 300m + 같은 카테고리 + 2시간 내 신고 자동 클러스터
+  - 1건: 숨김, 2건: 반투명 깃발, 3건: 뱃지 표시, 5건+: auto-verified
+  - PostGIS `ST_DWithin` 쿼리 기반
+  - Rate limit 완화 (10건/일) — 클러스터링이 스팸 필터 역할
 - [ ] Turnstile 환경변수 설정 (Render + Vercel) → 봇 방어 활성화
 - [ ] Real-time update (polling 또는 Supabase Realtime)
 - [ ] Push notifications for specific district/category (PWA)
