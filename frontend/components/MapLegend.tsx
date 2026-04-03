@@ -17,7 +17,7 @@ export default function MapLegend({ lang }: MapLegendProps) {
       <div className="flex items-center gap-2">
         <div className="flex h-2">
           {[0.1, 0.2, 0.3, 0.45].map((op, i) => (
-            <div key={i} className="w-3 h-2" style={{ background: "#4ade80", opacity: op }} />
+            <div key={i} className="w-3 h-2" style={{ background: "#22d3ee", opacity: op }} />
           ))}
         </div>
         <div className="flex gap-x-2">
