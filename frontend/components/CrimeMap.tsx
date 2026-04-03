@@ -126,6 +126,7 @@ export default function CrimeMap({
 }: CrimeMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.LayerGroup | null>(null);
+  const flagMarkersRef = useRef<L.LayerGroup | null>(null);  // 유저 신고 전용 — 항상 표시
   const choroplethRef = useRef<L.GeoJSON | null>(null);
   const labelsRef = useRef<L.LayerGroup | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -160,6 +161,7 @@ export default function CrimeMap({
       .addAttribution('&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>')
       .addTo(map);
     markersRef.current = L.layerGroup().addTo(map);
+    flagMarkersRef.current = L.layerGroup().addTo(map);
     labelsRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
     map.on("zoomend", handleZoom);
@@ -289,25 +291,7 @@ export default function CrimeMap({
       marker.addTo(markersRef.current!);
     });
 
-    // 유저 신고 깃발 마커 (토글 시에만)
-    if (showPendingReports) {
-      pendingReports.forEach((inc) => {
-        if (inc.lat == null || inc.lng == null) return;
-        const group = CATEGORY_GROUPS[getCategoryGroup(inc.category)];
-        const marker = L.marker([inc.lat, inc.lng], { icon: createFlagIcon(), zIndexOffset: 500 });
-        marker.bindPopup(
-          `<div style="font-family:var(--font-mono),monospace;font-size:12px;min-width:180px">
-            <div style="color:#f59e0b;font-size:10px;text-transform:uppercase;margin-bottom:4px;font-weight:700">
-              ${lang === "de" ? "Nutzer-Meldung" : "User Report"}
-            </div>
-            <div style="color:${group.color};margin-bottom:2px;text-transform:uppercase;font-size:10px">${group.label[lang]}</div>
-            <div style="color:#9ca3af;font-size:11px">${inc.address_raw || "—"}</div>
-          </div>`,
-        );
-        marker.addTo(markersRef.current!);
-      });
-    }
-  }, [incidents, pendingReports, showPendingReports, onSelect, markersVisible, lang]);
+  }, [incidents, onSelect, markersVisible, lang]);
 
   const handleLocate = useCallback(() => {
     if (!mapRef.current || typeof navigator === "undefined" || !navigator.geolocation) return;
@@ -330,6 +314,28 @@ export default function CrimeMap({
       { enableHighAccuracy: true, timeout: 10000 },
     );
   }, []);
+
+  // 유저 신고 깃발 마커 — zoom 무관, 항상 표시
+  useEffect(() => {
+    if (!flagMarkersRef.current) return;
+    flagMarkersRef.current.clearLayers();
+    if (!showPendingReports) return;
+    pendingReports.forEach((inc) => {
+      if (inc.lat == null || inc.lng == null) return;
+      const group = CATEGORY_GROUPS[getCategoryGroup(inc.category)];
+      const marker = L.marker([inc.lat, inc.lng], { icon: createFlagIcon(), zIndexOffset: 500 });
+      marker.bindPopup(
+        `<div style="font-family:var(--font-mono),monospace;font-size:12px;min-width:180px">
+          <div style="color:#f59e0b;font-size:10px;text-transform:uppercase;margin-bottom:4px;font-weight:700">
+            ${lang === "de" ? "Nutzer-Meldung" : "User Report"}
+          </div>
+          <div style="color:${group.color};margin-bottom:2px;text-transform:uppercase;font-size:10px">${group.label[lang]}</div>
+          <div style="color:#9ca3af;font-size:11px">${inc.address_raw || "—"}</div>
+        </div>`,
+      );
+      marker.addTo(flagMarkersRef.current!);
+    });
+  }, [pendingReports, showPendingReports, lang]);
 
   // Pan to selected
   useEffect(() => {
