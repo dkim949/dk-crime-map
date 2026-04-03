@@ -87,6 +87,11 @@ export default function IncidentDetail({ incidentId, lang, onClose }: IncidentDe
 
         {detail.body_de && (
           <div className="border-t border-border pt-3">
+            {lang === "en" && (
+              <p className="text-[10px] text-fg-dim font-mono mb-2 italic">
+                Original report in German:
+              </p>
+            )}
             <p className="text-xs leading-relaxed text-fg-muted whitespace-pre-line">
               {detail.body_de}
             </p>

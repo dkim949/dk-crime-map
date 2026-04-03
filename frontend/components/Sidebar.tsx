@@ -120,7 +120,7 @@ export default function Sidebar({
               </div>
             </div>
             <p className="text-[11px] text-fg-dim font-mono tabular-nums mt-0.5">
-              {incidents.length} {t(lang, "incidents")}
+              {loading ? "..." : `${incidents.length} ${t(lang, "incidents")}`}
             </p>
           </div>
         )}
