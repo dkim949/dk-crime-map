@@ -68,9 +68,12 @@ function matchDistrictName(geoName: string, districtCounts: Record<string, numbe
   return 0;
 }
 
-function getHeatColor(count: number, maxCount: number): string {
-  if (maxCount === 0 || count === 0) return COLOR_SCALE[0];
-  const ratio = Math.log(count + 1) / Math.log(maxCount + 1);
+// Quantile-based: rank within the current filtered dataset, so color spread is always even
+function getHeatColor(count: number, sortedCounts: number[]): string {
+  if (count === 0 || sortedCounts.length === 0) return COLOR_SCALE[0];
+  const rank = sortedCounts.findIndex(c => c >= count);
+  const safeRank = rank === -1 ? sortedCounts.length - 1 : rank;
+  const ratio = sortedCounts.length <= 1 ? 1 : safeRank / (sortedCounts.length - 1);
   const idx = Math.min(Math.floor(ratio * COLOR_SCALE.length), COLOR_SCALE.length - 1);
   return COLOR_SCALE[idx];
 }
@@ -98,6 +101,7 @@ export default function CrimeMap({
   const choroplethRef = useRef<L.GeoJSON | null>(null);
   const labelsRef = useRef<L.LayerGroup | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const locateMarkerRef = useRef<L.Marker | null>(null);
   const [geoData, setGeoData] = useState<GeoJsonCollection | null>(null);
   const [markersVisible, setMarkersVisible] = useState(DEFAULT_ZOOM >= MARKER_VISIBLE_ZOOM);
 
@@ -140,13 +144,13 @@ export default function CrimeMap({
     if (labelsRef.current) labelsRef.current.clearLayers();
 
     const districtCounts = countByDistrict(incidents);
-    const maxCount = Math.max(...Object.values(districtCounts), 1);
+    const sortedCounts = Object.values(districtCounts).filter(c => c > 0).sort((a, b) => a - b);
 
     const choropleth = L.geoJSON(geoData as GeoJSON.FeatureCollection, {
       style: (feature) => {
         const name = feature?.properties?.name || "";
         const count = matchDistrictName(name, districtCounts);
-        const color = getHeatColor(count, maxCount);
+        const color = getHeatColor(count, sortedCounts);
         return {
           fillColor: color,
           fillOpacity: count > 0 ? CHOROPLETH_OPACITY : 0.05,
@@ -158,7 +162,7 @@ export default function CrimeMap({
       onEachFeature: (feature, layer) => {
         const name = feature.properties?.name || "";
         const count = matchDistrictName(name, districtCounts);
-        const heatColor = getHeatColor(count, maxCount);
+        const heatColor = getHeatColor(count, sortedCounts);
         layer.bindTooltip(
           `<div style="font-family:var(--font-mono),monospace;font-size:12px;padding:6px 10px;background:#12121aee;color:#e4e4e7;border:1px solid ${heatColor}44;">
             <span style="font-weight:700;color:${heatColor}">${name}</span>
@@ -224,6 +228,28 @@ export default function CrimeMap({
     });
   }, [incidents, onSelect, markersVisible, lang]);
 
+  const handleLocate = useCallback(() => {
+    if (!mapRef.current || typeof navigator === "undefined" || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        if (!mapRef.current) return;
+        if (locateMarkerRef.current) locateMarkerRef.current.remove();
+        locateMarkerRef.current = L.marker([coords.latitude, coords.longitude], {
+          icon: L.divIcon({
+            className: "",
+            html: `<div style="width:12px;height:12px;background:#a78bfa;border-radius:50%;border:2px solid #fff;box-shadow:0 0 10px #a78bfa99"></div>`,
+            iconSize: [12, 12],
+            iconAnchor: [6, 6],
+          }),
+          interactive: false,
+        }).addTo(mapRef.current);
+        mapRef.current.setView([coords.latitude, coords.longitude], 13, { animate: true });
+      },
+      (err) => console.warn("Geolocation error:", err),
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  }, []);
+
   // Pan to selected
   useEffect(() => {
     if (!mapRef.current || !selectedId) return;
@@ -240,6 +266,20 @@ export default function CrimeMap({
         .choropleth-tooltip::before { display:none!important; }
       `}</style>
       <div ref={containerRef} className="w-full h-full" />
+      <button
+        onClick={handleLocate}
+        className="absolute bottom-8 left-2 z-[1000] w-8 h-8 bg-bg-raised border border-border text-fg-dim hover:text-accent flex items-center justify-center transition-colors duration-150"
+        title={lang === "de" ? "Meinen Standort" : "My location"}
+      >
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+          <circle cx="6.5" cy="6.5" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
+          <circle cx="6.5" cy="6.5" r="5.5" stroke="currentColor" strokeWidth="1" opacity="0.5"/>
+          <line x1="6.5" y1="0" x2="6.5" y2="2" stroke="currentColor" strokeWidth="1.5"/>
+          <line x1="6.5" y1="11" x2="6.5" y2="13" stroke="currentColor" strokeWidth="1.5"/>
+          <line x1="0" y1="6.5" x2="2" y2="6.5" stroke="currentColor" strokeWidth="1.5"/>
+          <line x1="11" y1="6.5" x2="13" y2="6.5" stroke="currentColor" strokeWidth="1.5"/>
+        </svg>
+      </button>
       {!markersVisible && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-bg-raised/80 border border-border px-3 py-1.5 text-[11px] font-mono text-fg-dim pointer-events-none">
           {lang === "de" ? "Reinzoomen für Details" : "Zoom in for details"}

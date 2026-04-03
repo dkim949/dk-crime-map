@@ -108,9 +108,11 @@ export default function Dashboard() {
 
   const handleSelect = useCallback((id: string) => setSelectedId(id), []);
   const toggleGroup = useCallback((group: string) => {
-    setActiveGroups((prev) =>
-      prev.includes(group) ? prev.filter((g) => g !== group) : [...prev, group],
-    );
+    setActiveGroups((prev) => {
+      // Radio style: deselect if already the only one (→ All), otherwise select only this
+      if (prev.length === 1 && prev[0] === group) return [];
+      return [group];
+    });
   }, []);
   const clearGroups = useCallback(() => setActiveGroups([]), []);
 
