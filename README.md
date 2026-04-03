@@ -9,10 +9,10 @@ Real-time crime & safety incident map for Berlin, powered by open data.
 ## Architecture
 
 ```
-┌─────────────┐    ┌──────────────┐    ┌──────────────────┐
+┌────────────-─┐    ┌──────────────┐    ┌──────────────────┐
 │  GitHub      │    │  Vercel      │    │  Render          │
 │  Actions     │    │  (Frontend)  │    │  (Backend API)   │
-│  Cron 12h    │    │  Next.js 16  │───▶│  FastAPI          │
+│  Cron 12h    │    │  Next.js 16  │───▶│  FastAPI         │
 │  ┌─────────┐ │    │  React 19    │    │  Python 3.11     │
 │  │pipeline │─┼───▶│  Leaflet     │    └────────┬─────────┘
 │  │  .py    │ │    │  Tailwind    │             │
@@ -21,7 +21,7 @@ Real-time crime & safety incident map for Berlin, powered by open data.
        │                                         │
        ▼                                         ▼
 ┌──────────────────────────────────────────────────┐
-│                 Supabase (PostgreSQL)             │
+│                 Supabase (PostgreSQL)            │
 │  ┌────────────┐  ┌──────────────┐  ┌───────────┐ │
 │  │ incidents  │  │ bike_thefts  │  │ app_config│ │
 │  │ (222 rows) │  │ (168+ rows)  │  │           │ │
@@ -113,8 +113,8 @@ dk-crime-map/
 
 ## API Endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
+| Method | Path | Description    |
+|--------|------|----------------|
 | GET | `/health` | Health check |
 | GET | `/incidents` | Crime incidents (filter: district, limit, offset) |
 | GET | `/incidents/{id}` | Single incident detail |
