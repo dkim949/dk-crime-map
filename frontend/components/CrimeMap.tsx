@@ -47,6 +47,22 @@ function createMarkerIcon(category: string): L.DivIcon {
   });
 }
 
+// 깃발 아이콘 — 유저 신고 전용
+const FLAG_COLOR = "#f59e0b"; // amber
+function createFlagIcon(): L.DivIcon {
+  return L.divIcon({
+    className: "",
+    iconSize: [14, 20],
+    iconAnchor: [2, 20],
+    html: `<div style="filter:drop-shadow(0 0 4px ${FLAG_COLOR}88)">
+      <svg width="14" height="20" viewBox="0 0 14 20">
+        <line x1="2" y1="0" x2="2" y2="19" stroke="${FLAG_COLOR}" stroke-width="1.5" stroke-linecap="round"/>
+        <polygon points="2,1 13,5 2,10" fill="${FLAG_COLOR}" opacity="0.9"/>
+      </svg>
+    </div>`,
+  });
+}
+
 function countByDistrict(incidents: Incident[]): Record<string, number> {
   const counts: Record<string, number> = {};
   for (const inc of incidents) {
@@ -86,6 +102,7 @@ function getTitle(inc: Incident, lang: "de" | "en"): string {
 interface CrimeMapProps {
   incidents: Incident[];
   pendingReports?: Incident[];
+  showPendingReports?: boolean;
   selectedId: string | null;
   onSelect: (id: string) => void;
   onDistrictClick?: (district: string) => void;
@@ -98,6 +115,7 @@ interface CrimeMapProps {
 export default function CrimeMap({
   incidents,
   pendingReports = [],
+  showPendingReports = false,
   selectedId,
   onSelect,
   onDistrictClick,
@@ -254,33 +272,42 @@ export default function CrimeMap({
     markersRef.current.clearLayers();
     if (!markersVisible) return;
 
-    const renderMarker = (inc: Incident, opacity: number) => {
+    // 공식 사건 마커
+    incidents.forEach((inc) => {
       if (inc.lat == null || inc.lng == null) return;
       const group = CATEGORY_GROUPS[getCategoryGroup(inc.category)];
-      const icon = opacity < 1
-        ? L.divIcon({
-            className: "",
-            iconSize: [MARKER_SIZE, MARKER_SIZE],
-            iconAnchor: [MARKER_SIZE / 2, MARKER_SIZE / 2],
-            html: `<div style="opacity:${opacity};filter:drop-shadow(0 0 4px ${group.color}66)">${markerSvg(inc.category)}</div>`,
-          })
-        : createMarkerIcon(inc.category);
-      const marker = L.marker([inc.lat, inc.lng], { icon });
+      const marker = L.marker([inc.lat, inc.lng], { icon: createMarkerIcon(inc.category) });
       marker.bindPopup(
         `<div style="font-family:var(--font-mono),monospace;font-size:12px;min-width:200px">
           <div style="font-weight:700;margin-bottom:4px;font-size:13px;color:#e4e4e7">${getTitle(inc, lang)}</div>
-          <div style="color:${group.color};margin-bottom:2px;text-transform:uppercase;font-size:10px">${group.label[lang]}${opacity < 1 ? ' · unverified' : ''}</div>
+          <div style="color:${group.color};margin-bottom:2px;text-transform:uppercase;font-size:10px">${group.label[lang]}</div>
           <div style="color:#9ca3af;margin-bottom:2px">${inc.district || "—"}</div>
           <div style="color:#4b5563;font-size:11px">${inc.occurred_at ? new Date(inc.occurred_at).toLocaleDateString(lang === "de" ? "de-DE" : "en-US") : "—"}</div>
         </div>`,
       );
       marker.on("click", () => onSelect(inc.id));
       marker.addTo(markersRef.current!);
-    };
+    });
 
-    incidents.forEach((inc) => renderMarker(inc, 1));
-    pendingReports.forEach((inc) => renderMarker(inc, 0.4));
-  }, [incidents, pendingReports, onSelect, markersVisible, lang]);
+    // 유저 신고 깃발 마커 (토글 시에만)
+    if (showPendingReports) {
+      pendingReports.forEach((inc) => {
+        if (inc.lat == null || inc.lng == null) return;
+        const group = CATEGORY_GROUPS[getCategoryGroup(inc.category)];
+        const marker = L.marker([inc.lat, inc.lng], { icon: createFlagIcon(), zIndexOffset: 500 });
+        marker.bindPopup(
+          `<div style="font-family:var(--font-mono),monospace;font-size:12px;min-width:180px">
+            <div style="color:#f59e0b;font-size:10px;text-transform:uppercase;margin-bottom:4px;font-weight:700">
+              ${lang === "de" ? "Nutzer-Meldung" : "User Report"}
+            </div>
+            <div style="color:${group.color};margin-bottom:2px;text-transform:uppercase;font-size:10px">${group.label[lang]}</div>
+            <div style="color:#9ca3af;font-size:11px">${inc.address_raw || "—"}</div>
+          </div>`,
+        );
+        marker.addTo(markersRef.current!);
+      });
+    }
+  }, [incidents, pendingReports, showPendingReports, onSelect, markersVisible, lang]);
 
   const handleLocate = useCallback(() => {
     if (!mapRef.current || typeof navigator === "undefined" || !navigator.geolocation) return;

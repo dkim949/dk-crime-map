@@ -44,6 +44,7 @@ export default function Dashboard() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [reportSuccess, setReportSuccess] = useState(false);
   const [geoError, setGeoError] = useState(false);
+  const [showPendingReports, setShowPendingReports] = useState(false);
 
   // html lang + URL params sync
   useEffect(() => {
@@ -231,10 +232,32 @@ export default function Dashboard() {
           onSelect={handleSelect}
           onDistrictClick={setDistrict}
           lang={lang}
+          showPendingReports={showPendingReports}
           reportMode={reportMode}
           reportPin={reportPin}
           onReportPin={handleReportPin}
         />
+
+        {/* User reports toggle */}
+        {!showReportSheet && pendingReports.length > 0 && (
+          <button
+            onClick={() => setShowPendingReports((v) => !v)}
+            className={`
+              absolute bottom-14 right-4 z-[1000] px-3 py-1.5 flex items-center gap-1.5
+              text-[10px] font-mono border transition-all duration-150
+              ${showPendingReports
+                ? "bg-amber-500/15 border-amber-500/60 text-amber-400"
+                : "bg-bg-raised border-border text-fg-dim hover:border-amber-500/40 hover:text-amber-400/70"
+              }
+            `}
+          >
+            <svg width="10" height="13" viewBox="0 0 14 20" fill="none">
+              <line x1="2" y1="0" x2="2" y2="19" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <polygon points="2,1 13,5 2,10" fill="currentColor" opacity="0.9"/>
+            </svg>
+            {lang === "de" ? `Meldungen (${pendingReports.length})` : `Reports (${pendingReports.length})`}
+          </button>
+        )}
 
         {/* Report FAB */}
         {!showReportSheet && (
