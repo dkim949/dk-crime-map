@@ -229,7 +229,7 @@ export default function CrimeMap({
         layer.bindTooltip(
           `<div style="font-family:var(--font-mono),monospace;font-size:12px;padding:6px 10px;background:#12121aee;color:#e4e4e7;border:1px solid #38bdf844;">
             <span style="font-weight:700;color:#38bdf8">${name}</span>
-            <span style="color:#9ca3af;margin-left:6px">${count} thefts</span>
+            <span style="color:#9ca3af;margin-left:6px">${count} ${lang === "de" ? "Diebstähle" : "thefts"}</span>
           </div>`,
           { sticky: true, direction: "top", offset: [0, -10], className: "choropleth-tooltip" },
         );
