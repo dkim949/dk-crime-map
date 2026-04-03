@@ -161,7 +161,6 @@ export default function CrimeMap({
     if (!mapRef.current || !geoData) return;
     if (choroplethRef.current) { choroplethRef.current.remove(); choroplethRef.current = null; }
     if (labelsRef.current) labelsRef.current.clearLayers();
-    if (showBikeLayer) return; // bike layer가 켜져있으면 crime choropleth 안 그림
 
     const districtCounts = countByDistrict(incidents);
     const maxCount = Math.max(...Object.values(districtCounts), 1);
@@ -242,7 +241,7 @@ export default function CrimeMap({
         const count = bikeCounts[plrId] || 0;
         return {
           fillColor: BIKE_FILL,
-          fillOpacity: count > 0 ? computeOpacity(count, maxCount) : 0,
+          fillOpacity: count > 0 ? computeOpacity(count, maxCount, 0.2) : 0,
           color: count > 0 ? "#38bdf833" : "transparent",
           weight: count > 0 ? 1 : 0,
         };
@@ -261,14 +260,13 @@ export default function CrimeMap({
           { sticky: true, direction: "top", offset: [0, -10], className: "choropleth-tooltip" },
         );
         layer.on("mouseover", () => {
-          (layer as L.Path).setStyle({ weight: 2, color: "#38bdf866", fillOpacity: Math.min(computeOpacity(count, maxCount) + 0.15, 0.75) });
+          (layer as L.Path).setStyle({ weight: 2, color: "#38bdf866", fillOpacity: Math.min(computeOpacity(count, maxCount, 0.2) + 0.15, 0.4) });
         });
         layer.on("mouseout", () => bikeLayer.resetStyle(layer));
       },
     });
     bikeLayer.addTo(mapRef.current);
-    // Bike layer on top of crime choropleth, but behind markers
-    if (choroplethRef.current) choroplethRef.current.bringToBack();
+    bikeLayer.bringToBack(); // behind crime choropleth
     bikeLayerRef.current = bikeLayer;
     return () => { if (bikeLayerRef.current) { bikeLayerRef.current.remove(); bikeLayerRef.current = null; } };
   }, [lorGeoData, bikeCounts, showBikeLayer]);

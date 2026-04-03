@@ -51,8 +51,8 @@ export async function fetchBikeTheftsAsIncidents(): Promise<Incident[]> {
     return {
       id: `bike-${i}-${lor}`,
       source: "fahrrad_data",
-      title_de: `Fahrraddiebstahl — ${bt.bike_type || "Fahrrad"} (${bt.damage_eur || 0}€)`,
-      title_en: `Bike theft — ${bt.bike_type || "Bicycle"} (${bt.damage_eur || 0}€)`,
+      title_de: `Fahrraddiebstahl — ${bt.bike_type || "Fahrrad"}${bt.damage_eur ? ` (${bt.damage_eur}€)` : ""}`,
+      title_en: `Bike theft — ${bt.bike_type || "Bicycle"}${bt.damage_eur ? ` (${bt.damage_eur}€)` : ""}`,
       district: bt.district || null,
       address_raw: null,
       lat,
