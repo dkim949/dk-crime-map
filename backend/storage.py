@@ -138,6 +138,7 @@ def insert_report(
     reporter_note: str,
     lat: Optional[float] = None,
     lng: Optional[float] = None,
+    expires_at: Optional[str] = None,
     client: Optional[Client] = None,
 ) -> Optional[str]:
     """
@@ -150,7 +151,7 @@ def insert_report(
         log.warning("Report submission attempted but feature is disabled.")
         return None
 
-    result = db.table("incidents").insert({
+    row: dict = {
         "source":        "report",
         "address_raw":   address_raw,
         "category":      category,
@@ -159,7 +160,11 @@ def insert_report(
         "lng":           lng,
         "is_verified":   False,
         "is_active":     True,
-    }).execute()
+    }
+    if expires_at:
+        row["expires_at"] = expires_at
+
+    result = db.table("incidents").insert(row).execute()
 
     if result.data:
         incident_id = result.data[0]["id"]

@@ -10,6 +10,7 @@ export interface Incident {
   category: string;
   occurred_at: string | null;
   scraped_at: string;
+  is_verified?: boolean;
 }
 
 export interface IncidentDetail extends Incident {

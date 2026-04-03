@@ -85,18 +85,26 @@ function getTitle(inc: Incident, lang: "de" | "en"): string {
 
 interface CrimeMapProps {
   incidents: Incident[];
+  pendingReports?: Incident[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   onDistrictClick?: (district: string) => void;
   lang: "de" | "en";
+  reportMode?: boolean;
+  reportPin?: { lat: number; lng: number } | null;
+  onReportPin?: (lat: number, lng: number) => void;
 }
 
 export default function CrimeMap({
   incidents,
+  pendingReports = [],
   selectedId,
   onSelect,
   onDistrictClick,
   lang,
+  reportMode = false,
+  reportPin = null,
+  onReportPin,
 }: CrimeMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.LayerGroup | null>(null);
@@ -104,6 +112,7 @@ export default function CrimeMap({
   const labelsRef = useRef<L.LayerGroup | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const locateMarkerRef = useRef<L.Marker | null>(null);
+  const reportPinMarkerRef = useRef<L.Marker | null>(null);
   const [geoData, setGeoData] = useState<GeoJsonCollection | null>(null);
   const [markersVisible, setMarkersVisible] = useState(DEFAULT_ZOOM >= MARKER_VISIBLE_ZOOM);
 
@@ -138,6 +147,36 @@ export default function CrimeMap({
     map.on("zoomend", handleZoom);
     return () => { map.off("zoomend", handleZoom); map.remove(); mapRef.current = null; };
   }, [handleZoom]);
+
+  // Report mode: map click → place pin
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const map = mapRef.current;
+    if (reportMode && onReportPin) {
+      map.getContainer().style.cursor = "crosshair";
+      const handler = (e: L.LeafletMouseEvent) => onReportPin(e.latlng.lat, e.latlng.lng);
+      map.on("click", handler);
+      return () => { map.off("click", handler); map.getContainer().style.cursor = ""; };
+    } else {
+      map.getContainer().style.cursor = "";
+    }
+  }, [reportMode, onReportPin]);
+
+  // Report pin marker
+  useEffect(() => {
+    if (!mapRef.current) return;
+    if (reportPinMarkerRef.current) { reportPinMarkerRef.current.remove(); reportPinMarkerRef.current = null; }
+    if (!reportPin) return;
+    reportPinMarkerRef.current = L.marker([reportPin.lat, reportPin.lng], {
+      icon: L.divIcon({
+        className: "",
+        html: `<div style="width:16px;height:16px;background:#e0115f;border-radius:50%;border:2px solid #fff;box-shadow:0 0 12px #e0115f99;transform:translate(-50%,-50%)"></div>`,
+        iconSize: [0, 0],
+        iconAnchor: [0, 0],
+      }),
+      interactive: false,
+    }).addTo(mapRef.current);
+  }, [reportPin]);
 
   // Crime choropleth (Bezirk level) — bike layer ON이면 숨김
   useEffect(() => {
@@ -176,7 +215,7 @@ export default function CrimeMap({
           (layer as L.Path).setStyle({ weight: 2, color: `${heatColor}88`, fillOpacity: Math.min(CHOROPLETH_OPACITY + 0.15, 0.7) });
         });
         layer.on("mouseout", () => choropleth.resetStyle(layer));
-        layer.on("click", () => onDistrictClick?.(name));
+        layer.on("click", () => { if (!reportMode) onDistrictClick?.(name); });
       },
     });
     choropleth.addTo(mapRef.current);
@@ -207,29 +246,41 @@ export default function CrimeMap({
       if (choroplethRef.current) { choroplethRef.current.remove(); choroplethRef.current = null; }
       if (labelsRef.current) labelsRef.current.clearLayers();
     };
-  }, [geoData, incidents, onDistrictClick]);
+  }, [geoData, incidents, onDistrictClick, reportMode]);
 
   // Markers
   useEffect(() => {
     if (!markersRef.current) return;
     markersRef.current.clearLayers();
     if (!markersVisible) return;
-    incidents.forEach((inc) => {
+
+    const renderMarker = (inc: Incident, opacity: number) => {
       if (inc.lat == null || inc.lng == null) return;
       const group = CATEGORY_GROUPS[getCategoryGroup(inc.category)];
-      const marker = L.marker([inc.lat, inc.lng], { icon: createMarkerIcon(inc.category) });
+      const icon = opacity < 1
+        ? L.divIcon({
+            className: "",
+            iconSize: [MARKER_SIZE, MARKER_SIZE],
+            iconAnchor: [MARKER_SIZE / 2, MARKER_SIZE / 2],
+            html: `<div style="opacity:${opacity};filter:drop-shadow(0 0 4px ${group.color}66)">${markerSvg(inc.category)}</div>`,
+          })
+        : createMarkerIcon(inc.category);
+      const marker = L.marker([inc.lat, inc.lng], { icon });
       marker.bindPopup(
         `<div style="font-family:var(--font-mono),monospace;font-size:12px;min-width:200px">
           <div style="font-weight:700;margin-bottom:4px;font-size:13px;color:#e4e4e7">${getTitle(inc, lang)}</div>
-          <div style="color:${group.color};margin-bottom:2px;text-transform:uppercase;font-size:10px">${group.label[lang]}</div>
+          <div style="color:${group.color};margin-bottom:2px;text-transform:uppercase;font-size:10px">${group.label[lang]}${opacity < 1 ? ' · unverified' : ''}</div>
           <div style="color:#9ca3af;margin-bottom:2px">${inc.district || "—"}</div>
           <div style="color:#4b5563;font-size:11px">${inc.occurred_at ? new Date(inc.occurred_at).toLocaleDateString(lang === "de" ? "de-DE" : "en-US") : "—"}</div>
         </div>`,
       );
       marker.on("click", () => onSelect(inc.id));
       marker.addTo(markersRef.current!);
-    });
-  }, [incidents, onSelect, markersVisible, lang]);
+    };
+
+    incidents.forEach((inc) => renderMarker(inc, 1));
+    pendingReports.forEach((inc) => renderMarker(inc, 0.4));
+  }, [incidents, pendingReports, onSelect, markersVisible, lang]);
 
   const handleLocate = useCallback(() => {
     if (!mapRef.current || typeof navigator === "undefined" || !navigator.geolocation) return;

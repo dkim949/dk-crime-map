@@ -13,7 +13,9 @@ FastAPI 백엔드 — Berlin Crime Map API
 """
 
 import os
+import math
 import logging
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -24,6 +26,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+import requests as http_requests
 import time
 
 from storage import (
@@ -56,7 +59,7 @@ app.add_middleware(
 _rate_limit: dict[str, list[float]] = {}
 
 def check_rate_limit(ip: str, max_req: int = 60, window: int = 60) -> bool:
-    """60초 윈도우 내 max_req 초과 시 False."""
+    """window초 내 max_req 초과 시 False."""
     now = time.time()
     hits = [t for t in _rate_limit.get(ip, []) if now - t < window]
     _rate_limit[ip] = hits
@@ -64,6 +67,32 @@ def check_rate_limit(ip: str, max_req: int = 60, window: int = 60) -> bool:
         return False
     _rate_limit[ip].append(now)
     return True
+
+
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """두 좌표 간 거리 (km)."""
+    R = 6371
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+    return R * 2 * math.asin(math.sqrt(a))
+
+
+def _verify_turnstile(token: str) -> bool:
+    """Cloudflare Turnstile 토큰 검증."""
+    secret = os.environ.get("TURNSTILE_SECRET_KEY", "")
+    if not secret:
+        return True  # 개발 환경: 시크릿 없으면 skip
+    try:
+        resp = http_requests.post(
+            "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+            data={"secret": secret, "response": token},
+            timeout=5,
+        )
+        return resp.json().get("success", False)
+    except Exception as e:
+        log.warning(f"Turnstile verify error: {e}")
+        return False
 
 
 # ── 헬스체크 ─────────────────────────────────────────────────
@@ -198,33 +227,53 @@ def get_app_config():
 
 # ── 제보 제출 ─────────────────────────────────────────────────
 
+REPORT_TTL_HOURS = 72  # 미검증 신고는 72시간 후 지도에서 숨김
+
+
 class ReportPayload(BaseModel):
-    address_raw:   str = Field(..., min_length=5, max_length=200)
-    category:      str = Field(..., pattern="^(theft|assault|shooting|fraud|drugs|traffic|fire|missing|homicide|other)$")
-    reporter_note: str = Field("", max_length=500)
-    lat:           Optional[float] = Field(None, ge=52.3, le=52.7)   # 베를린 범위 제한
-    lng:           Optional[float] = Field(None, ge=13.1, le=13.8)
+    address_raw:     str = Field(..., min_length=2, max_length=200)
+    category:        str = Field(..., pattern="^(theft|assault|shooting|fraud|drugs|traffic|fire|missing|homicide|other)$")
+    reporter_note:   str = Field("", max_length=200)
+    lat:             Optional[float] = Field(None, ge=52.3, le=52.7)
+    lng:             Optional[float] = Field(None, ge=13.1, le=13.8)
+    user_lat:        Optional[float] = Field(None, ge=52.0, le=53.0)   # 제보자 위치 (선택)
+    user_lng:        Optional[float] = Field(None, ge=12.8, le=14.1)
+    turnstile_token: str = Field("", max_length=2048)
 
 
 @app.post("/reports", status_code=201)
 async def submit_report(payload: ReportPayload, request: Request):
     """
     제보 제출.
-    report_enabled=false 이면 503 반환.
-    Rate limit: IP당 60초에 5건.
+    - Rate limit: IP당 1시간에 1건
+    - Cloudflare Turnstile 검증
+    - 제보자 위치 제공 시 반경 10km 이내 검증
+    - TTL: 72시간 후 자동 숨김 (DB에는 유지)
     """
-    # rate limit (제보는 더 엄격하게)
     client_ip = request.client.host
     now = time.time()
-    report_hits = [t for t in _rate_limit.get(f"report:{client_ip}", []) if now - t < 60]
-    if len(report_hits) >= 5:
-        raise HTTPException(status_code=429, detail="Too many requests. Please wait.")
+
+    # 1시간에 1건 제한
+    report_hits = [t for t in _rate_limit.get(f"report:{client_ip}", []) if now - t < 3600]
+    if len(report_hits) >= 1:
+        raise HTTPException(status_code=429, detail="Too many requests. Please try again in 1 hour.")
     _rate_limit[f"report:{client_ip}"] = report_hits + [now]
 
-    # 제보 기능 상태 확인
+    # Turnstile 검증
+    if not _verify_turnstile(payload.turnstile_token):
+        raise HTTPException(status_code=403, detail="Bot verification failed.")
+
+    # 제보자 위치 vs 신고 위치 거리 검증 (10km 이내)
+    if (payload.user_lat and payload.user_lng and payload.lat and payload.lng):
+        dist_km = _haversine_km(payload.user_lat, payload.user_lng, payload.lat, payload.lng)
+        if dist_km > 10:
+            raise HTTPException(status_code=422, detail="Reported location is too far from your current location.")
+
     db = get_client()
     if not is_report_enabled(db):
         raise HTTPException(status_code=503, detail="Report feature is currently disabled.")
+
+    expires_at = (datetime.now(timezone.utc) + timedelta(hours=REPORT_TTL_HOURS)).isoformat()
 
     incident_id = insert_report(
         address_raw=payload.address_raw,
@@ -232,10 +281,30 @@ async def submit_report(payload: ReportPayload, request: Request):
         reporter_note=payload.reporter_note,
         lat=payload.lat,
         lng=payload.lng,
+        expires_at=expires_at,
         client=db,
     )
 
     if not incident_id:
         raise HTTPException(status_code=500, detail="Failed to save report.")
 
-    return {"id": incident_id, "status": "pending_review"}
+    return {"id": incident_id, "status": "pending_review", "expires_at": expires_at}
+
+
+@app.get("/reports/pending")
+def get_pending_reports():
+    """미검증 신고 목록 (expires_at 이전 것만)."""
+    db = get_client()
+    now_iso = datetime.now(timezone.utc).isoformat()
+    result = (
+        db.table("incidents")
+        .select("id, source, title_de, title_en, district, address_raw, lat, lng, category, occurred_at, scraped_at")
+        .eq("source", "report")
+        .eq("is_active", True)
+        .eq("is_verified", False)
+        .gt("expires_at", now_iso)
+        .order("scraped_at", desc=True)
+        .limit(500)
+        .execute()
+    )
+    return {"data": result.data or [], "count": len(result.data or [])}

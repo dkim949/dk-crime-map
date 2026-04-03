@@ -71,3 +71,36 @@ export async function fetchBikeTheftsByLor(): Promise<{ data: Record<string, num
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
+
+export async function fetchPendingReports(): Promise<Incident[]> {
+  try {
+    const res = await fetch(`${API_BASE}/reports/pending`, { cache: "no-store" });
+    if (!res.ok) return [];
+    const { data } = await res.json();
+    return (data || []).map((r: Incident) => ({ ...r, is_verified: false }));
+  } catch {
+    return [];
+  }
+}
+
+export async function submitReport(payload: {
+  address_raw: string;
+  category: string;
+  reporter_note: string;
+  lat: number;
+  lng: number;
+  user_lat?: number;
+  user_lng?: number;
+  turnstile_token: string;
+}): Promise<{ id: string; expires_at: string }> {
+  const res = await fetch(`${API_BASE}/reports`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (res.status === 429) throw new Error("rateLimit");
+  if (res.status === 422) throw new Error("tooFar");
+  if (res.status === 403) throw new Error("botCheck");
+  if (!res.ok) throw new Error("submitError");
+  return res.json();
+}

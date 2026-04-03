@@ -7,10 +7,11 @@ import MobileTopBar from "./MobileTopBar";
 import MobileList from "./MobileList";
 import MapLegend from "./MapLegend";
 import IncidentDetail from "./IncidentDetail";
-import { fetchIncidents, fetchBikeTheftsAsIncidents } from "@/lib/api";
+import ReportSheet from "./ReportSheet";
+import { fetchIncidents, fetchBikeTheftsAsIncidents, fetchPendingReports } from "@/lib/api";
 import type { Incident } from "@/types/incident";
 import { CATEGORY_GROUPS } from "@/types/incident";
-import type { Lang } from "@/lib/i18n";
+import { t, type Lang } from "@/lib/i18n";
 
 const CrimeMap = dynamic(() => import("./CrimeMap"), { ssr: false });
 
@@ -36,6 +37,12 @@ export default function Dashboard() {
   const [lang, setLang] = useState<Lang>(init.current.lang);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pendingReports, setPendingReports] = useState<Incident[]>([]);
+  const [reportMode, setReportMode] = useState(false);
+  const [reportPin, setReportPin] = useState<{ lat: number; lng: number } | null>(null);
+  const [showReportSheet, setShowReportSheet] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [reportSuccess, setReportSuccess] = useState(false);
 
   // html lang + URL params sync
   useEffect(() => {
@@ -48,6 +55,11 @@ export default function Dashboard() {
     const qs = sp.toString();
     window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
   }, [lang, datePreset, district, activeGroups]);
+
+  // Load pending reports (separate from main load, best-effort)
+  useEffect(() => {
+    fetchPendingReports().then(setPendingReports).catch(() => {});
+  }, []);
 
   // Load crime + bike data together
   const load = useCallback(async (retry = 0) => {
@@ -107,6 +119,27 @@ export default function Dashboard() {
   }, [allIncidents, bikeIncidents, datePreset, activeGroups]);
 
   const handleSelect = useCallback((id: string) => setSelectedId(id), []);
+
+  const handleReportPin = useCallback((lat: number, lng: number) => {
+    setReportPin({ lat, lng });
+    setShowReportSheet(true);
+  }, []);
+
+  const handleReportSuccess = useCallback(() => {
+    setShowReportSheet(false);
+    setReportMode(false);
+    setReportPin(null);
+    setReportSuccess(true);
+    // 신규 신고 반영
+    fetchPendingReports().then(setPendingReports).catch(() => {});
+    setTimeout(() => setReportSuccess(false), 3000);
+  }, []);
+
+  const handleReportClose = useCallback(() => {
+    setShowReportSheet(false);
+    setReportMode(false);
+    setReportPin(null);
+  }, []);
   const toggleGroup = useCallback((group: string) => {
     setActiveGroups((prev) => {
       // Radio style: deselect if already the only one (→ All), otherwise select only this
@@ -164,16 +197,63 @@ export default function Dashboard() {
         <MapLegend lang={lang} />
         <CrimeMap
           incidents={incidents}
+          pendingReports={pendingReports}
           selectedId={selectedId}
           onSelect={handleSelect}
           onDistrictClick={setDistrict}
           lang={lang}
+          reportMode={reportMode}
+          reportPin={reportPin}
+          onReportPin={handleReportPin}
         />
-        {selectedId && (
+
+        {/* Report FAB */}
+        {!showReportSheet && (
+          <button
+            onClick={() => { setReportMode(!reportMode); setReportPin(null); }}
+            className={`
+              absolute bottom-4 right-4 z-[1000] px-3 py-2
+              text-[11px] font-mono uppercase tracking-widest border
+              transition-all duration-150
+              ${reportMode
+                ? "bg-accent text-bg border-accent"
+                : "bg-bg-raised text-fg-dim border-border hover:text-accent hover:border-accent"
+              }
+            `}
+          >
+            {reportMode ? "✕ " : "+ "}{t(lang, "reportBtn")}
+          </button>
+        )}
+
+        {/* Report mode hint */}
+        {reportMode && !showReportSheet && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-bg-raised/90 border border-accent/50 px-3 py-1.5 text-[11px] font-mono text-accent pointer-events-none">
+            {t(lang, "reportPlacePin")}
+          </div>
+        )}
+
+        {/* Success toast */}
+        {reportSuccess && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1001] bg-green-900/90 border border-green-500/50 px-3 py-1.5 text-[11px] font-mono text-green-400 pointer-events-none">
+            {t(lang, "reportSuccess")}
+          </div>
+        )}
+
+        {selectedId && !showReportSheet && (
           <IncidentDetail
             incidentId={selectedId}
             lang={lang}
             onClose={() => setSelectedId(null)}
+          />
+        )}
+
+        {showReportSheet && (
+          <ReportSheet
+            lang={lang}
+            pin={reportPin}
+            userLocation={userLocation}
+            onClose={handleReportClose}
+            onSuccess={handleReportSuccess}
           />
         )}
       </main>
